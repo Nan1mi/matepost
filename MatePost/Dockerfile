@@ -10,6 +10,4 @@ WORKDIR /app
 EXPOSE 8080
 COPY --from=build /app/publish .
 COPY matepost-prototype.html ./wwwroot/index.html
-RUN mkdir -p ./wwwroot/images
-COPY images ./wwwroot/images/
 ENTRYPOINT ["dotnet", "MatePost.dll"]
