@@ -53,6 +53,8 @@ catch (Exception ex)
 {
     Console.WriteLine($"DB error: {ex.Message}");
 }
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseSwagger();
 app.UseSwaggerUI();
 
