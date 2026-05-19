@@ -1,4 +1,4 @@
-﻿using MatePost.Data;
+using MatePost.Data;
 using MatePost.DTOs;
 using MatePost.Models;
 using Microsoft.EntityFrameworkCore;
@@ -22,13 +22,17 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
     {
-        if (await _db.Users.AnyAsync(u => u.Email == dto.Email.ToLower()))
+        // 1. Очищаємо email від пробілів та переводимо в нижній регістр
+        var cleanEmail = dto.Email.ToLower().Trim();
+
+        // 2. Шукаємо саме за чистим email
+        if (await _db.Users.AnyAsync(u => u.Email == cleanEmail))
             throw new InvalidOperationException("Користувач з таким email вже існує.");
 
         var user = new User
         {
             Name = dto.Name.Trim(),
-            Email = dto.Email.ToLower().Trim(),
+            Email = cleanEmail, // Зберігаємо чистий
             Phone = dto.Phone.Trim(),
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             Role = "User",
@@ -44,7 +48,11 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email.ToLower())
+        // 1. Очищаємо email і тут, щоб уникнути помилок з пробілами при вводі
+        var cleanEmail = dto.Email.ToLower().Trim();
+
+        // 2. Шукаємо в базі за чистим email
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == cleanEmail)
             ?? throw new UnauthorizedAccessException("Невірний email або пароль.");
 
         if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
