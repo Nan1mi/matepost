@@ -1,0 +1,1554 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>MatePost — Прототип</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Manrope:wght@400;500;600;700&family=Libertinus+Serif:wght@400;700&family=Public+Sans:ital,wght@0,900;1,900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root {
+  --primary: #006b54;
+  --primary-dark: #00513f;
+  --primary-light: #eaf8f2;
+  --mint: #d4f0e4;
+  --accent: #00c97a;
+  --red: #c42b2b;
+  --ink: #0e1a16;
+  --body: #3d5048;
+  --muted: #7a9487;
+  --chip-bg: #edf5f1;
+  --border: rgba(0,107,84,0.12);
+  --shadow: 0 4px 24px rgba(0,0,0,0.08);
+  --font-display: 'Unbounded', sans-serif;
+  --font-ui: 'Manrope', sans-serif;
+  --font-serif: 'Libertinus Serif', serif;
+  --font-brand: 'Public Sans', sans-serif;
+  --ease: cubic-bezier(0.34,1.1,0.64,1);
+  --ease-smooth: cubic-bezier(0.25,0.46,0.45,0.94);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;background:#111;}
+button,input,select{font-family:var(--font-ui);}
+a{text-decoration:none;}
+
+#app{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 30% 20%,#003d2e 0%,#0e1a16 60%,#070f0b 100%);}
+.phone{width:390px;height:844px;max-height:100dvh;background:#f5f9f7;border-radius:44px;overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:0 0 0 1px rgba(255,255,255,0.08),0 40px 80px rgba(0,0,0,0.7),inset 0 1px 0 rgba(255,255,255,0.15);}
+@media(max-height:900px){.phone{border-radius:0;width:100%;height:100dvh;}}
+@media(max-width:420px){.phone{width:100vw;height:100dvh;border-radius:0;}}
+
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;transform:translateX(40px);transition:opacity 0.28s var(--ease-smooth),transform 0.28s var(--ease-smooth);will-change:transform,opacity;overflow:hidden;}
+.screen.active{opacity:1;pointer-events:all;transform:translateX(0);z-index:2;}
+.screen.slide-back{transform:translateX(-30px);}
+
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.scroll::-webkit-scrollbar{display:none;}
+.scroll--tabbed{padding-bottom:88px;}
+
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:52px 20px 14px;background:#fff;border-bottom:1px solid var(--border);flex-shrink:0;position:relative;z-index:10;}
+.hdr__brand{font-family:var(--font-display);font-size:17px;color:var(--primary-dark);letter-spacing:-0.02em;font-weight:900;}
+.hdr__avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(145deg,#c5e9d7,#006b54);cursor:pointer;box-shadow:0 2px 8px rgba(0,107,84,0.2);}
+.hdr-back{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:var(--primary);background:none;border:none;padding:4px 8px;cursor:pointer;border-radius:8px;transition:all 0.2s;}
+.hdr-back svg{width:18px;height:18px;}
+.hdr-green{background:#e8fff4;border-bottom:1px solid rgba(0,107,84,0.1);}
+.hdr-center{justify-content:center;position:relative;}
+.hdr-center .hdr-back{position:absolute;left:16px;}
+.hdr-center .hdr__title{font-size:14px;font-weight:700;color:var(--primary-dark);letter-spacing:1px;text-transform:uppercase;}
+
+.tabbar{display:flex;align-items:center;justify-content:space-around;background:#fff;border-top:1px solid var(--border);padding:8px 0 20px;flex-shrink:0;position:relative;z-index:20;}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--muted);padding:6px 12px;border-radius:12px;transition:all 0.2s;cursor:pointer;background:none;border:none;}
+.tab.active{color:var(--primary);background:var(--primary-light);}
+.tab .ico{font-size:20px;line-height:1;}
+.tab--fab{width:48px;height:48px;border-radius:50%;background:linear-gradient(145deg,var(--primary),var(--primary-dark));color:#fff;font-size:24px;font-weight:300;display:grid;place-items:center;box-shadow:0 4px 16px rgba(0,107,84,0.4);margin-top:-12px;padding:0;transition:all 0.2s var(--ease);}
+
+.btn{width:100%;padding:16px;border-radius:16px;background:linear-gradient(145deg,var(--primary),var(--primary-dark));color:#fff;font-size:15px;font-weight:700;border:none;transition:all 0.2s var(--ease);box-shadow:0 4px 20px rgba(0,107,84,0.3);display:block;text-align:center;cursor:pointer;}
+.btn:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,107,84,0.4);}
+.btn:active{transform:translateY(0) scale(0.98);}
+.btn--ghost{background:transparent;color:var(--primary);border:1.5px solid rgba(0,107,84,0.3);box-shadow:none;}
+.btn--ghost:hover{background:var(--primary-light);border-color:var(--primary);}
+.btn--sm{padding:12px 16px;font-size:14px;}
+
+.title{font-family:var(--font-display);font-size:22px;color:var(--ink);margin-bottom:6px;line-height:1.2;}
+.lead{font-size:14px;color:var(--body);line-height:1.55;margin-bottom:18px;}
+.cap{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin:20px 0 10px;}
+
+.form-block{background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,0.03);}
+.form-block h3{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--primary-dark);margin-bottom:12px;padding-left:12px;position:relative;}
+.form-block h3::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:4px;height:4px;background:var(--primary);border-radius:50%;}
+.field{margin-bottom:10px;}
+.field:last-child{margin-bottom:0;}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600;}
+.field input,.field select{width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid var(--border);font-size:14px;color:var(--ink);background:#fafcfb;outline:none;transition:all 0.2s;}
+.field input:focus,.field select:focus{border-color:var(--primary);background:#fff;box-shadow:0 0 0 3px rgba(0,107,84,0.1);}
+.inp{width:100%;height:58px;background:#eeeeee;border:1px solid #bec9c3;border-radius:8px;padding:0 16px;font-size:15px;color:var(--ink);box-shadow:inset 0 4px 4px rgba(0,0,0,0.15);outline:none;transition:border-color 0.2s;}
+.inp:focus{border-color:var(--primary);}
+.inp::placeholder{color:#6f7a74;}
+
+#toast{position:absolute;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;font-weight:600;white-space:nowrap;opacity:0;pointer-events:none;transition:all 0.3s var(--ease);z-index:999;max-width:85%;text-align:center;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.parcel{background:#fff;border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:var(--shadow);cursor:pointer;transition:all 0.2s var(--ease);border:1.5px solid transparent;}
+.parcel:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,0.12);border-color:var(--primary);}
+.parcel:active{transform:translateY(0) scale(0.98);}
+.parcel__badge{display:inline-block;padding:4px 10px;border-radius:999px;background:var(--primary-light);color:var(--primary-dark);font-size:11px;font-weight:700;letter-spacing:0.04em;margin-bottom:8px;}
+.parcel__badge--red{background:#fdeaea;color:var(--red);}
+.parcel__badge--wait{background:#fff7e0;color:#9b6c00;}
+.parcel__badge--green{background:#d4f5e6;color:#00513f;}
+.parcel__name{font-weight:700;font-size:15px;color:var(--ink);margin-bottom:3px;}
+.parcel__num{font-size:12px;color:var(--muted);font-family:monospace;letter-spacing:0.04em;}
+.parcel__route{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;font-weight:600;color:var(--body);border-top:1px solid var(--border);padding-top:10px;}
+.parcel__route-arrow{flex:1;height:1px;background:linear-gradient(90deg,var(--primary) 60%,transparent);}
+
+.promo{border-radius:20px;padding:18px;background:linear-gradient(135deg,#00513f 0%,#006b54 50%,#00906e 100%);color:#fff;margin-bottom:18px;position:relative;overflow:hidden;}
+.promo::after{content:'★';position:absolute;right:16px;top:12px;font-size:48px;opacity:0.12;line-height:1;}
+.promo h3{font-family:var(--font-display);font-size:15px;margin-bottom:6px;}
+.promo p{font-size:13px;opacity:0.9;line-height:1.5;}
+
+.hero{margin:-20px -20px 20px;padding:52px 20px 24px;background:linear-gradient(155deg,var(--primary-dark) 0%,var(--primary) 60%,#00906e 100%);color:#fff;}
+.hero--red{background:linear-gradient(155deg,#7a1e1e 0%,var(--red) 50%,#e04545 100%);}
+.hero__track{font-size:11px;opacity:0.8;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;}
+.hero__title{font-size:20px;font-weight:700;line-height:1.3;margin-bottom:10px;}
+.hero__badge{display:inline-block;padding:6px 14px;border-radius:999px;background:rgba(255,255,255,0.2);font-size:13px;font-weight:600;backdrop-filter:blur(4px);}
+
+.timeline{list-style:none;padding-left:0;position:relative;}
+.tl-item{display:flex;gap:14px;padding-bottom:22px;position:relative;}
+.tl-item:last-child{padding-bottom:0;}
+.tl-item::before{content:'';position:absolute;left:11px;top:22px;bottom:0;width:2px;background:var(--border);}
+.tl-item:last-child::before{display:none;}
+.tl-dot{flex-shrink:0;width:24px;height:24px;border-radius:50%;background:var(--primary);display:grid;place-items:center;margin-top:2px;}
+.tl-dot--dim{background:#b8cec8;}
+.tl-dot svg{width:12px;height:12px;fill:#fff;}
+.tl-text strong{display:block;font-size:14px;font-weight:700;color:var(--ink);}
+.tl-text time{font-size:12px;color:var(--muted);}
+
+.map-area{flex:1;position:relative;min-height:300px;overflow:hidden;}
+#leaflet-map,#guest-leaflet-map{position:absolute;inset:0;width:100%;height:100%;z-index:5;}
+.map-search-bar{position:absolute;top:12px;left:12px;right:12px;background:rgba(255,255,255,0.95);border-radius:999px;padding:10px 16px;font-size:13px;color:var(--muted);box-shadow:0 4px 16px rgba(0,0,0,0.1);display:flex;align-items:center;gap:8px;z-index:900;}
+.map-sheet{background:#fff;border-radius:24px 24px 0 0;padding:20px;box-shadow:0 -4px 24px rgba(0,0,0,0.08);flex-shrink:0;z-index:900;position:relative;}
+.map-sheet h2{font-family:var(--font-display);font-size:17px;color:var(--primary-dark);margin-bottom:4px;}
+.map-sheet p{font-size:13px;color:var(--body);margin-bottom:14px;}
+
+.pay-card{display:flex;align-items:center;gap:14px;padding:16px;border-radius:16px;border:2px solid var(--border);background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.04);margin-bottom:10px;cursor:pointer;font-weight:600;font-size:15px;color:var(--ink);transition:all 0.2s var(--ease);width:100%;text-align:left;}
+.pay-card.active{border-color:var(--primary);background:var(--primary-light);}
+.pay-ico{font-size:24px;}
+.pay-sum{text-align:center;padding:20px;font-family:var(--font-display);font-size:38px;font-weight:900;color:var(--primary-dark);background:linear-gradient(135deg,var(--primary-light) 0%,#fff 100%);border-radius:20px;margin:16px 0;}
+.pay-sum small{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-top:4px;}
+
+.ok-ring{width:96px;height:96px;margin:12px auto 20px;border-radius:50%;background:linear-gradient(145deg,#d4f5e6,#a8e6c8);display:grid;place-items:center;font-size:48px;}
+.ok-center{text-align:center;padding:24px 12px;}
+.ok-center h2{font-family:var(--font-display);font-size:20px;color:var(--primary-dark);margin-bottom:10px;}
+.ok-center p{font-size:14px;line-height:1.6;color:var(--body);}
+
+.ticket{border-radius:20px;padding:22px;background:linear-gradient(180deg,#fff 0%,#f0faf6 100%);border:2px dashed rgba(0,107,84,0.25);text-align:center;}
+.qr{width:160px;height:160px;margin:14px auto;border-radius:12px;background:repeating-linear-gradient(90deg,#181d1b 0,#181d1b 6px,#fff 6px,#fff 12px),repeating-linear-gradient(0deg,#181d1b 0,#181d1b 6px,#fff 6px,#fff 12px);background-blend-mode:multiply;}
+.track-big{font-family:monospace;font-weight:700;font-size:18px;letter-spacing:0.08em;color:var(--ink);margin-bottom:4px;}
+
+.loc-box{padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,var(--primary-light) 0%,#fff 100%);margin-bottom:16px;border:1px solid rgba(0,107,84,0.1);}
+.loc-box strong{display:block;color:var(--primary-dark);font-size:14px;font-weight:700;margin-bottom:2px;}
+.loc-box span{font-size:13px;color:var(--body);}
+
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;margin-bottom:14px;padding:12px;background:#fff;border-radius:16px;}
+.cal-head{font-size:11px;font-weight:700;color:var(--muted);padding:4px 0;}
+.cal-day{aspect-ratio:1;max-width:40px;max-height:40px;border-radius:10px;border:none;background:#fff;font-size:13px;font-weight:600;color:var(--body);cursor:pointer;transition:all 0.15s;margin:0 auto;width:100%;}
+.cal-day:hover:not(:disabled){background:var(--primary-light);}
+.cal-day:disabled{color:#ccc;background:#f5f5f5;cursor:default;}
+.cal-day.selected{background:var(--primary);color:#fff;}
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;}
+.slot{padding:12px 8px;border-radius:12px;border:1.5px solid var(--border);background:#fff;font-size:13px;font-weight:600;color:var(--body);cursor:pointer;transition:all 0.15s;text-align:center;}
+.slot.selected{border-color:var(--primary);background:var(--primary);color:#fff;}
+
+.prof-top{text-align:center;padding:16px 0 20px;}
+.prof-av{width:80px;height:80px;border-radius:50%;background:linear-gradient(145deg,#c5e9d7,#006b54);margin:0 auto 12px;border:3px solid #fff;box-shadow:0 4px 16px rgba(0,107,84,0.2);}
+.prof-top h2{font-size:20px;font-weight:700;color:var(--ink);}
+.prof-top p{font-size:13px;color:var(--muted);margin-top:3px;}
+.loyalty{border-radius:20px;padding:18px;background:linear-gradient(135deg,#00513f,#00906e);color:#fff;margin-bottom:18px;position:relative;overflow:hidden;}
+.loyalty::before{content:'🏅';position:absolute;right:16px;top:12px;font-size:52px;opacity:0.15;}
+.loyalty strong{font-size:11px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.8;}
+.loyalty .pts{font-family:var(--font-display);font-size:34px;margin:6px 0 4px;}
+.row-toggle{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border);font-size:15px;color:var(--ink);}
+.row-toggle:last-child{border-bottom:none;}
+.toggle{width:50px;height:28px;border-radius:999px;background:#dde8e3;position:relative;transition:background 0.25s;flex-shrink:0;cursor:pointer;}
+.toggle.on{background:var(--primary);}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,0.2);transition:transform 0.25s var(--ease);}
+.toggle.on::after{transform:translateX(22px);}
+
+.modal-overlay{position:absolute;inset:0;background:rgba(14,26,22,0.5);backdrop-filter:blur(2px);display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity 0.25s;z-index:100;}
+.modal-overlay.open{opacity:1;pointer-events:all;}
+.sheet{background:#fff;border-radius:24px 24px 0 0;padding:20px;width:100%;transform:translateY(100%);transition:transform 0.3s var(--ease);}
+.modal-overlay.open .sheet{transform:translateY(0);}
+.sheet-handle{width:36px;height:4px;border-radius:2px;background:#ddd;margin:-8px auto 16px;display:block;}
+.sheet-row{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border);font-size:15px;color:var(--ink);font-weight:600;cursor:pointer;width:100%;text-align:left;transition:color 0.15s;background:none;border-left:none;border-right:none;border-top:none;}
+.sheet-row:last-of-type{border-bottom:none;}
+
+.kv{margin-bottom:18px;}
+.kv-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--border);font-size:14px;}
+.kv-row span:first-child{color:var(--muted);}
+.kv-row span:last-child{font-weight:600;color:var(--ink);}
+
+.grid-acts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+.grid-act{padding:16px 12px;background:#fff;border-radius:18px;font-size:13px;font-weight:700;color:var(--ink);text-align:left;border:1.5px solid var(--border);transition:all 0.2s var(--ease);box-shadow:0 2px 8px rgba(0,0,0,0.04);cursor:pointer;}
+.grid-act:hover{transform:translateY(-2px);border-color:var(--primary);}
+.grid-act .ico{font-size:22px;display:block;margin-bottom:8px;}
+
+.search-wrap{display:flex;align-items:center;gap:8px;padding:0;background:#fff;border-radius:16px;border:1.5px solid var(--border);margin-bottom:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04);}
+.search-wrap input{flex:1;border:none;outline:none;padding:12px 16px;font-size:14px;color:var(--ink);background:transparent;}
+.search-wrap input::placeholder{color:var(--muted);}
+.search-wrap button{flex-shrink:0;padding:10px 14px;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:16px;}
+
+.chips{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;}
+.chips::-webkit-scrollbar{display:none;}
+.chip{flex-shrink:0;padding:7px 16px;border-radius:999px;background:var(--chip-bg);font-size:13px;font-weight:600;color:var(--body);border:1.5px solid transparent;transition:all 0.2s var(--ease);cursor:pointer;}
+.chip.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+
+.empty-cta{text-align:center;padding:20px 12px;background:#fff;border-radius:20px;border:1.5px dashed var(--border);margin-top:16px;}
+.empty-cta .ico{font-size:40px;margin-bottom:10px;}
+.empty-cta h3{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:6px;}
+.empty-cta p{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5;}
+
+.price-box{display:flex;justify-content:space-between;align-items:center;padding:16px;background:linear-gradient(135deg,var(--primary-light) 0%,#fff 100%);border-radius:16px;margin:16px 0;border:1px solid rgba(0,107,84,0.15);}
+.price-box span{font-size:14px;color:var(--body);font-weight:600;}
+.price-box strong{font-family:var(--font-display);font-size:22px;color:var(--primary-dark);}
+.price-box strong::after{content:'₴';font-size:14px;margin-left:2px;}
+
+.divider{height:1px;background:var(--border);margin:16px 0;}
+
+.q-steps{background:linear-gradient(180deg,var(--primary-light) 0%,#fff 40%);border-radius:20px;padding:20px;margin-bottom:16px;border:1px solid rgba(0,107,84,0.1);}
+.q-steps h3{font-family:var(--font-display);font-size:15px;color:var(--primary-dark);margin-bottom:14px;}
+.q-step{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;font-size:14px;line-height:1.4;}
+.q-step:last-child{margin-bottom:0;}
+.q-num{flex-shrink:0;width:24px;height:24px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;}
+.q-ticket{background:#fff;border-radius:16px;padding:18px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,0.06);margin-bottom:4px;}
+.q-ticket strong{font-family:var(--font-display);font-size:18px;color:var(--ink);display:block;margin-bottom:10px;}
+.q-qr{width:120px;height:120px;margin:0 auto 12px;border-radius:10px;background:conic-gradient(from 0deg,#333 0deg 90deg,#eee 90deg 180deg,#333 180deg 270deg,#eee 270deg 360deg);}
+.q-ticket p{font-size:13px;color:var(--muted);line-height:1.4;}
+
+@keyframes fade-up{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+@keyframes scale-in{from{opacity:0;transform:scale(0.88);}to{opacity:1;transform:scale(1);}}
+.anim{animation:fade-up 0.4s var(--ease-smooth) both;}
+.anim-2{animation:fade-up 0.4s var(--ease-smooth) 0.08s both;}
+.anim-3{animation:fade-up 0.4s var(--ease-smooth) 0.16s both;}
+.anim-scale{animation:scale-in 0.45s var(--ease) both;}
+
+/* ── SPLASH ── */
+#s-splash{background:linear-gradient(180deg,#b8d9c4 0%,#a8cfb4 100%);display:flex;flex-direction:column;overflow:hidden;}
+.splash-hero{width:100%;height:57%;flex-shrink:0;overflow:hidden;background:#006b54;}
+.splash-hero img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;}
+.splash-copy{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 32px;text-align:center;}
+.splash-copy h1{font-family:var(--font-brand);font-weight:900;font-size:30px;color:#00402e;letter-spacing:-0.5px;line-height:1.15;margin-bottom:12px;}
+.splash-copy p{font-size:15px;color:#1a3d2e;line-height:1.6;max-width:280px;margin-bottom:0;}
+.splash-btn{width:100%;max-width:300px;padding:18px;background:#00513f;color:#fff;border:none;border-radius:12px;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 6px 24px rgba(0,81,63,0.35);transition:all 0.2s;margin-top:auto;}
+
+/* ── ONBOARDING ── */
+#s-onb1,#s-onb2,#s-onb3{background:#eaf2ed;}
+.onb-shell{flex:1;overflow-y:auto;display:flex;flex-direction:column;padding:43px 18px 36px;}
+.onb-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+.onb-brand{font-family:var(--font-brand);font-style:italic;font-weight:900;font-size:24px;color:var(--primary);}
+.onb-skip{background:none;border:none;color:#3e4944;font-size:14px;cursor:pointer;padding:8px 12px;}
+.onb-card{background:#fff;border-radius:32px;padding:24px 20px 28px;box-shadow:0 32px 64px -12px rgba(24,29,27,0.08);display:flex;flex-direction:column;gap:24px;}
+.onb-img{width:100%;border-radius:24px;overflow:hidden;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;font-size:64px;}
+.onb-img--queue{background:linear-gradient(135deg,#c8eadc,#7ab89a);}
+.onb-img--track{background:linear-gradient(135deg,#a8d4f0,#5a8fc2);}
+.onb-img--support{background:linear-gradient(135deg,#d4c8ea,#8a72c2);}
+.onb-text{text-align:center;}
+.onb-text h2{font-family:var(--font-serif);font-size:34px;font-weight:700;color:#181d1b;}
+.onb-text p{font-family:var(--font-serif);font-size:17px;color:#3e4944;line-height:1.65;margin-top:14px;}
+.onb-btn{width:100%;padding:18px;border:none;border-radius:16px;background:linear-gradient(135deg,#00513f,var(--primary));color:#fff;font-size:17px;cursor:pointer;font-weight:700;}
+
+/* ── AUTH ── */
+#s-login,#s-register{background:#fff;}
+.auth-shell{flex:1;overflow-y:auto;padding:60px 44px 40px;display:flex;flex-direction:column;align-items:center;}
+.auth-logo{width:64px;height:64px;background:#f1f5f1;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:30px;margin-bottom:14px;}
+.auth-brand{color:#00513f;font-size:30px;font-weight:700;margin-bottom:6px;}
+.auth-title{color:#181d1b;font-size:22px;font-weight:600;margin-bottom:6px;}
+.auth-sub{color:#3e4944;font-size:15px;margin-bottom:36px;text-align:center;}
+.google-btn{width:100%;background:#fff;border:1px solid rgba(190,201,195,0.5);border-radius:6px;padding:15px 0;display:flex;justify-content:center;align-items:center;gap:12px;cursor:pointer;margin-bottom:32px;font-size:15px;color:#181d1b;font-weight:500;}
+.divider-row{width:100%;display:flex;align-items:center;gap:14px;margin-bottom:28px;}
+.divider-line{flex:1;height:1px;background:rgba(190,201,195,0.35);}
+.divider-txt{color:#6f7a74;font-size:12px;font-weight:600;}
+.auth-form{width:100%;display:flex;flex-direction:column;gap:18px;}
+.fgrp{display:flex;flex-direction:column;gap:6px;}
+.fgrp label{color:#3e4944;font-size:13px;font-weight:500;}
+.auth-btn{width:100%;background:var(--primary-dark);border:none;border-radius:6px;padding:18px 0;color:#fff;font-size:17px;font-weight:600;cursor:pointer;margin-top:8px;}
+.auth-links{display:flex;flex-direction:column;align-items:center;gap:16px;margin-top:20px;width:100%;}
+.auth-link-row{display:flex;align-items:center;gap:6px;font-size:14px;color:#3e4944;}
+.auth-link{color:var(--primary);font-weight:700;cursor:pointer;}
+.auth-forgot{color:var(--primary);font-size:14px;font-weight:600;cursor:pointer;}
+.auth-guest{color:#6f7a74;font-size:14px;text-decoration:underline;cursor:pointer;}
+
+/* ── PASSWORD ── */
+.pwd-shell{flex:1;overflow-y:auto;padding:60px 44px 40px;display:flex;flex-direction:column;align-items:center;text-align:center;}
+.pwd-title{color:#181d1b;font-size:26px;font-weight:700;margin-bottom:12px;}
+.pwd-sub{color:rgba(62,73,68,0.8);font-size:14px;line-height:1.55;margin-bottom:44px;max-width:280px;}
+.pwd-label{color:rgba(62,73,68,0.65);font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:14px;display:block;width:100%;text-align:left;}
+.pwd-btn{width:100%;height:64px;background:linear-gradient(90deg,var(--primary),var(--primary-dark));color:#fff;border:none;border-radius:16px;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:28px;}
+.otp-group{display:flex;gap:8px;margin-bottom:30px;justify-content:center;width:100%;}
+.otp-inp{width:48px;height:60px;border-radius:20px;background:#f1f5f1;border:2px solid transparent;text-align:center;font-size:22px;font-weight:700;color:#181d1b;outline:none;transition:all 0.2s;}
+.otp-inp:focus{border-color:var(--primary);background:#fff;}
+.resend-row{display:flex;flex-direction:column;align-items:center;gap:8px;}
+.resend-lbl{color:rgba(111,122,116,0.65);font-size:12px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;}
+.resend-btn{background:none;border:none;color:var(--primary-dark);font-size:14px;font-weight:700;cursor:pointer;}
+.support-pill{height:46px;background:#fff;border:1px solid rgba(190,201,195,0.4);border-radius:999px;padding:0 24px;display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;font-weight:600;color:var(--primary-dark);}
+.help-txt{color:rgba(62,73,68,0.6);font-size:13px;margin-bottom:10px;}
+
+/* ── GUEST ── */
+#s-guest-home{background:#fff;}
+.gh-header{height:71px;background:#e8fff4;display:flex;justify-content:space-between;align-items:center;padding:0 24px;flex-shrink:0;}
+.gh-logo{color:#064e3b;font-size:20px;font-weight:700;}
+.gh-content{flex:1;overflow-y:auto;padding:0 0 100px;}
+.gh-hero{padding:24px 24px 12px;}
+.gh-page-title{background:linear-gradient(to right,#00513f,#006b54);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-size:30px;font-weight:700;line-height:1.2;}
+/* Поле пошуку гостя */
+.gh-input-wrap{margin:0 24px 20px;background:#e0e3e0;border-radius:24px;padding:6px;display:flex;align-items:center;}
+.gh-input-real{flex:1;background:transparent;border:none;outline:none;padding:18px 20px;font-size:14px;color:#181d1b;font-family:var(--font-ui);}
+.gh-input-real::placeholder{color:#6f7a74;}
+.gh-scan-btn{background:var(--primary-dark);width:56px;height:56px;border-radius:18px;border:none;display:flex;justify-content:center;align-items:center;cursor:pointer;font-size:22px;color:#fff;flex-shrink:0;}
+.gh-result{margin:0 24px;}
+.gh-outer{background:#f1f5f1;border-radius:28px;padding:8px;}
+.gh-inner{background:#fff;border-radius:22px;padding:22px;display:flex;flex-direction:column;gap:16px;}
+.gh-status-lbl{color:#6f7a74;font-size:11px;font-weight:600;letter-spacing:0.5px;display:block;margin-bottom:6px;}
+.gh-status-row{display:flex;align-items:center;gap:10px;}
+.gh-dot{width:12px;height:12px;border-radius:50%;background:var(--primary);}
+.gh-status-val{font-size:20px;font-weight:700;color:#181d1b;}
+.gh-arrival-lbl{color:#3e4944;font-size:14px;margin-bottom:2px;}
+.gh-arrival-val{color:#181d1b;font-size:15px;font-weight:700;}
+.gh-details-btn{background:#c8eadc;color:#4c6b5f;border:none;border-radius:18px;padding:15px;font-size:15px;font-weight:700;width:100%;cursor:pointer;}
+.gh-nav{position:absolute;bottom:0;left:0;right:0;height:87px;background:#eefcf5;display:flex;justify-content:space-around;align-items:flex-end;padding:0 20px 16px;}
+.gh-tab{display:flex;flex-direction:column;align-items:center;cursor:pointer;background:none;border:none;width:64px;}
+.gh-tab span{font-size:11px;color:#78716c;margin-top:4px;}
+.gh-tab .gh-tab-ico{font-size:22px;}
+.gh-tab.active span{color:#064e3b;font-weight:700;}
+
+/* ── UPSELL ── */
+.up-header{display:flex;justify-content:flex-end;padding:28px 28px 14px;}
+.up-skip{color:#466559;font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;}
+.up-title{color:#00513f;font-size:24px;font-weight:700;padding:0 44px;line-height:1.3;margin-bottom:20px;}
+.up-img-wrap{padding:0 24px;margin-bottom:28px;}
+.up-img{width:100%;border-radius:20px;aspect-ratio:16/7;overflow:hidden;background:linear-gradient(135deg,#c8eadc,#7ab89a);display:flex;align-items:center;justify-content:center;font-size:80px;}
+.up-features{padding:0 44px;display:flex;flex-direction:column;gap:26px;}
+.up-feat{display:flex;gap:18px;align-items:flex-start;}
+.up-feat-ico{width:52px;height:52px;background:#c8eadc;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.up-feat-title{color:#181d1b;font-size:15px;font-weight:700;margin-bottom:4px;}
+.up-feat-desc{color:#3e4944;font-size:13px;line-height:1.5;}
+.up-cta{width:100%;background:linear-gradient(90deg,#00513f,var(--primary));color:#fff;border:none;border-radius:6px;padding:19px;font-size:15px;font-weight:700;cursor:pointer;}
+
+/* ── TARIFFS ── */
+.trf-header{height:71px;background:rgba(232,255,244,0.9);display:flex;justify-content:space-between;align-items:center;padding:0 24px;flex-shrink:0;}
+.trf-logo{font-size:22px;font-weight:700;color:#064e3b;}
+.trf-content{flex:1;overflow-y:auto;padding:0 24px 100px;}
+.trf-hero{padding-top:28px;margin-bottom:20px;}
+.trf-hero-title{font-size:26px;font-weight:700;color:#00513f;margin-bottom:12px;line-height:1.2;}
+.trf-card{background:#fff;border-radius:12px;padding:22px;margin-bottom:20px;box-shadow:0 2px 16px rgba(0,0,0,0.06);}
+.trf-label{color:#3e4944;font-size:14px;font-weight:500;margin-bottom:10px;display:block;}
+.type-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.type-opt{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;height:76px;border-radius:8px;border:1px solid #e0e3e0;background:#fff;cursor:pointer;font-size:13px;font-weight:500;color:#181d1b;}
+.type-opt.active{background:var(--primary);border-color:var(--primary);color:#94e8cb;}
+.trf-inp-wrap{background:#e0e3e0;border-radius:6px;padding:14px 16px;}
+.trf-inp-wrap input{background:transparent;border:none;outline:none;font-size:15px;color:#181d1b;font-weight:500;width:100%;}
+.trf-calc-btn{width:100%;background:var(--primary);color:#fff;border:none;border-radius:6px;padding:16px;font-size:15px;font-weight:700;cursor:pointer;margin-top:20px;}
+.trf-result{background:#fff;border-radius:12px;padding:28px;margin-top:20px;}
+.trf-result-lbl{font-size:12px;color:#3e4944;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin-bottom:14px;}
+.trf-price{display:flex;align-items:baseline;gap:6px;color:var(--primary);margin-bottom:12px;}
+.trf-price .amt{font-size:46px;font-weight:700;line-height:1;}
+.trf-price .cur{font-size:22px;font-weight:600;}
+.trf-time{font-size:14px;color:#3e4944;margin-bottom:20px;}
+.trf-breakdown{display:flex;flex-direction:column;gap:14px;margin-bottom:24px;}
+.trf-row{display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid #e0e3e0;font-size:14px;}
+.trf-row span:last-child{font-weight:600;}
+.trf-discount{background:rgba(200,234,220,0.5);border-radius:6px;padding:14px;display:flex;gap:10px;}
+
+/* ── BRANCH MAP ── */
+#s-guest-map{background:#fff;}
+.branch-map-area{flex:1;position:relative;overflow:hidden;min-height:280px;}
+.branch-sheet{background:#fff;border-radius:22px 22px 0 0;padding:10px 0 0;flex-shrink:0;}
+.branch-drag{width:50px;height:5px;background:#e0e3e0;border-radius:12px;margin:0 auto 14px;}
+.branch-body{padding:0 24px 16px;}
+.branch-name{font-size:20px;font-weight:700;color:#181d1b;margin-bottom:3px;}
+.branch-region{color:#466559;font-size:14px;}
+.branch-badge{background:#c8eadc;border-radius:12px;padding:6px 12px;color:#4c6b5f;font-size:14px;font-weight:600;}
+.branch-card{background:#f1f5f1;border-radius:8px;padding:14px 16px;display:flex;gap:14px;margin-bottom:8px;}
+.branch-card-ico{font-size:20px;flex-shrink:0;}
+.branch-card-lbl{color:#3e4944;font-size:11px;font-weight:600;letter-spacing:0.5px;margin-bottom:2px;}
+.branch-card-val{color:#181d1b;font-size:14px;line-height:1.4;}
+.branch-tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+.branch-tag{background:#f7faf6;border:1px solid rgba(224,227,224,0.5);border-radius:12px;padding:6px 12px;color:#3e4944;font-size:12px;}
+
+/* ── SUPPORT/CHAT ── */
+.sup-header{height:72px;background:#e8fff4;display:flex;align-items:center;padding:0 24px;position:relative;flex-shrink:0;}
+.sup-header-title{position:absolute;left:50%;transform:translateX(-50%);color:#065f46;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;}
+.sup-content{flex:1;overflow-y:auto;padding:0 36px 40px;}
+.sup-main-title{color:#006b54;font-size:30px;font-weight:700;margin:24px 0 10px;}
+.faq-card{background:#f1f5f1;border-radius:10px;padding:22px;margin-bottom:24px;}
+.faq-card-title{color:#181d1b;font-size:17px;font-weight:700;}
+.faq-item-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;cursor:pointer;}
+.faq-q{color:#3e4944;font-size:14px;}
+.sup-card{background:linear-gradient(135deg,#00513f 0%,#009f72 52%,#005d49 100%);border-radius:10px;padding:26px 22px;display:flex;flex-direction:column;align-items:center;text-align:center;}
+.sup-card-title{color:#fff;font-size:19px;font-weight:700;margin:0 0 10px;}
+.sup-card-sub{color:rgba(255,255,255,0.82);font-size:14px;line-height:1.4;margin:0 0 22px;}
+.sup-card-btn{background:rgba(0,0,0,0.25);border:none;border-radius:12px;padding:12px 24px;display:flex;align-items:center;gap:8px;cursor:pointer;color:#fff;font-size:14px;font-weight:600;}
+.chat-header{background:#e8fff4;flex-shrink:0;}
+.chat-topbar{height:72px;display:flex;align-items:center;padding:0 24px;position:relative;}
+.chat-topbar-title{position:absolute;left:50%;transform:translateX(-50%);color:#065f46;font-size:14px;font-weight:700;text-transform:uppercase;}
+.chat-op-bar{background:#f1f5f1;display:flex;justify-content:space-between;align-items:center;height:68px;padding:0 24px;}
+.chat-op-profile{display:flex;align-items:center;gap:12px;}
+.chat-avatar{width:40px;height:40px;background:var(--primary);border-radius:12px;position:relative;}
+.chat-status-dot{position:absolute;bottom:-2px;right:-2px;width:12px;height:12px;background:#22c55e;border:2px solid #fff;border-radius:50%;}
+.chat-op-name{color:#181d1b;font-size:14px;font-weight:700;}
+.chat-op-status{color:#3e4944;font-size:12px;}
+.chat-messages{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:20px;}
+.msg-row{display:flex;width:100%;}
+.msg-row.bot{justify-content:flex-start;gap:10px;}
+.msg-row.user{justify-content:flex-end;}
+.msg-row.system{justify-content:center;}
+.msg-avatar{width:32px;height:32px;background:#e0e3e0;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;}
+.msg-content{display:flex;flex-direction:column;gap:4px;max-width:85%;}
+.msg-row.user .msg-content{align-items:flex-end;}
+.bubble{padding:14px;font-size:14px;line-height:1.5;}
+.bot-bubble{background:#f1f5f1;color:#181d1b;border-radius:12px 12px 12px 0;}
+.user-bubble{background:#c8eadc;color:#183d2e;border-radius:12px 12px 0 12px;}
+.msg-time{font-size:12px;color:#3e4944;}
+.quick-replies{display:flex;gap:8px;margin-top:4px;}
+.q-reply{padding:8px 14px;border-radius:12px;border:1px solid rgba(190,201,195,0.3);font-size:13px;cursor:pointer;font-weight:500;}
+.q-reply.yes{background:#e8fff4;color:var(--primary-dark);}
+.q-reply.no{background:#fdeaea;color:#633;}
+.sys-bubble{background:#f1f5f1;padding:4px 12px;border-radius:12px;font-size:12px;color:#3e4944;}
+.chat-input-area{padding:14px;background:#fff;flex-shrink:0;border-top:1px solid var(--border);}
+.chat-input-row{background:#e0e3e0;border-radius:10px;display:flex;align-items:center;padding:8px;gap:8px;}
+.chat-input-ph{flex:1;color:rgba(62,73,68,0.55);font-size:14px;padding:8px 10px;}
+.chat-send-btn{background:var(--primary-dark);border:none;border-radius:6px;width:32px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:14px;}
+
+/* ── LOADING ── */
+.loading{display:flex;align-items:center;justify-content:center;padding:32px;color:var(--muted);font-size:14px;gap:8px;}
+.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 0.7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── TRACK RESULT BOX ── */
+.track-result-box{background:#fff;border-radius:20px;padding:16px;margin:0 24px;box-shadow:var(--shadow);border:1.5px solid var(--border);}
+.track-result-box.not-found{border-color:rgba(196,43,43,0.2);background:#fff9f9;}
+</style>
+</head>
+<body>
+<div id="app">
+<div class="phone">
+
+<!-- SPLASH -->
+<section class="screen active" id="s-splash">
+  <div class="splash-hero"><img src="images/splash-dog.png" alt="MatePost" onerror="this.style.display='none'"/></div>
+  <div class="splash-copy">
+    <h1>Вітаємо у MatePost!</h1>
+    <p>Твій вірний поштовий друг завжди поруч. Готовий доставити твої новини!</p>
+    <button class="splash-btn" onclick="go('s-onb1')">Почнемо</button>
+  </div>
+</section>
+
+<!-- ONBOARDING -->
+<section class="screen" id="s-onb1">
+  <div class="onb-shell">
+    <div class="onb-header"><span class="onb-brand">MatePost</span><button class="onb-skip" onclick="go('s-login')">Пропустити</button></div>
+    <div class="onb-card">
+      <div class="onb-img onb-img--queue">
+      <img src="images/onb-queue.png" style="width:100%;height:100%;object-fit:cover;border-radius:24px;"/>
+      </div>
+      <div class="onb-text"><h2>Електронна черга</h2><p>Забудьте про черги. Обирайте зручний час у застосунку та отримуйте свій QR-код.</p></div>
+      <button class="onb-btn" onclick="go('s-onb2')">Продовжити</button>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="s-onb2">
+  <div class="onb-shell">
+    <div class="onb-header"><span class="onb-brand">MatePost</span><button class="onb-skip" onclick="go('s-login')">Пропустити</button></div>
+    <div class="onb-card">
+      <div class="onb-img onb-img--track">
+      <img src="images/onb-track.png" style="width:100%;height:100%;object-fit:cover;border-radius:24px;"/>
+      </div>
+      <div class="onb-text"><h2>Швидкий трекінг</h2><p>Відстежуйте посилки миттєво. Вставте номер з буфера обміну або відскануйте штрих-код.</p></div>
+      <button class="onb-btn" onclick="go('s-onb3')">Продовжити</button>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="s-onb3">
+  <div class="onb-shell">
+    <div class="onb-header"><span class="onb-brand">MatePost</span><button class="onb-skip" onclick="go('s-login')">Пропустити</button></div>
+    <div class="onb-card">
+      <div class="onb-img onb-img--support">
+      <img src="images/onb-support.png" style="width:100%;height:100%;object-fit:cover;border-radius:24px;"/>
+      </div>
+      <div class="onb-text"><h2>Жива підтримка</h2><p>Ми завжди на зв'язку. Пріоритет живим операторам над ботами.</p></div>
+      <button class="onb-btn" onclick="go('s-login')">Продовжити</button>
+    </div>
+  </div>
+</section>
+
+<!-- LOGIN -->
+<section class="screen" id="s-login">
+  <div class="auth-shell">
+    <div class="auth-logo">📮</div>
+    <div class="auth-brand">MatePost</div>
+    <div class="auth-title">Ласкаво просимо</div>
+    <div class="auth-sub">Сервіс доставки, якому довіряють.</div>
+    <button class="google-btn"><span>G</span><span>Продовжити з Google</span></button>
+    <div class="divider-row"><div class="divider-line"></div><span class="divider-txt">АБО</span><div class="divider-line"></div></div>
+    <div class="auth-form">
+      <div class="fgrp"><label>Email</label><input class="inp" id="login-email" type="email" placeholder="example@gmail.com"/></div>
+      <div class="fgrp"><label>Пароль</label><input class="inp" id="login-pass" type="password" placeholder="Введіть пароль"/></div>
+      <div style="text-align:right;margin-top:-8px;"><span class="auth-forgot" onclick="go('s-pwd1')">Забули пароль?</span></div>
+      <button class="auth-btn" onclick="doLogin()">Увійти</button>
+    </div>
+    <div class="auth-links">
+      <div class="auth-link-row"><span>Немає акаунту?</span><span class="auth-link" onclick="go('s-register')">Зареєструватись</span></div>
+      <span class="auth-guest" onclick="go('s-guest-home')">Продовжити як гість</span>
+    </div>
+  </div>
+</section>
+
+<!-- REGISTER -->
+<section class="screen" id="s-register">
+  <div class="hdr hdr-green">
+    <button class="hdr-back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>Назад</button>
+    <span class="hdr__brand">MatePost</span><div style="width:60px"></div>
+  </div>
+  <div class="auth-shell" style="padding-top:24px;">
+    <div class="auth-logo">📮</div>
+    <div class="auth-brand" style="margin-bottom:4px;">MatePost</div>
+    <div class="auth-title">Реєстрація</div>
+    <div class="auth-sub">Сервіс доставки, якому довіряють.</div>
+    <div class="auth-form">
+      <div class="fgrp"><label>Ваше ім'я</label><input class="inp" id="reg-name" type="text" placeholder="Назар Сисоєв"/></div>
+      <div class="fgrp"><label>Email</label><input class="inp" id="reg-email" type="email" placeholder="example@gmail.com"/></div>
+      <div class="fgrp"><label>Номер телефону</label><input class="inp" id="reg-phone" type="tel" placeholder="+380 00 000 00 00"/></div>
+      <div class="fgrp"><label>Пароль (мін. 6 символів)</label><input class="inp" id="reg-pass" type="password" placeholder="Введіть пароль"/></div>
+      <button class="auth-btn" onclick="doRegister()">Зареєструватися</button>
+    </div>
+    <div class="auth-links">
+      <div class="auth-link-row"><span>Вже маєте акаунт?</span><span class="auth-link" onclick="go('s-login')">Увійти</span></div>
+      <span class="auth-guest" onclick="go('s-guest-home')">Продовжити як гість</span>
+    </div>
+  </div>
+</section>
+
+<!-- PASSWORD RESET -->
+<section class="screen" id="s-pwd1">
+  <div class="hdr hdr-green hdr-center">
+    <button class="hdr-back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></button>
+    <span class="hdr__title">БЕЗПЕКА</span>
+  </div>
+  <div class="pwd-shell">
+    <p class="pwd-title">Відновлення пароля</p>
+    <p class="pwd-sub">Введіть ваші дані, щоб безпечно отримати код доступу</p>
+    <span class="pwd-label">EMAIL АБО НОМЕР ТЕЛЕФОНУ</span>
+    <input class="inp" type="text" placeholder="example@gmail.com" style="width:100%;margin-bottom:32px;"/>
+    <button class="pwd-btn" onclick="go('s-pwd2')">Надіслати код</button>
+    <p class="help-txt">Виникли труднощі?</p>
+    <button class="support-pill" onclick="go('s-pwd4')">💬 Зв'язатися з підтримкою</button>
+  </div>
+</section>
+
+<section class="screen" id="s-pwd2">
+  <div class="hdr hdr-green hdr-center">
+    <button class="hdr-back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></button>
+    <span class="hdr__title">БЕЗПЕКА</span>
+  </div>
+  <div class="pwd-shell">
+    <div style="font-size:88px;margin-bottom:10px;">🛡️</div>
+    <p class="pwd-title">Підтвердження</p>
+    <p class="pwd-sub">Введіть 6-значний код, який ми щойно надіслали</p>
+    <div class="otp-group">
+      <input class="otp-inp" type="text" maxlength="1" inputmode="numeric"/>
+      <input class="otp-inp" type="text" maxlength="1" inputmode="numeric"/>
+      <input class="otp-inp" type="text" maxlength="1" inputmode="numeric"/>
+      <input class="otp-inp" type="text" maxlength="1" inputmode="numeric"/>
+      <input class="otp-inp" type="text" maxlength="1" inputmode="numeric"/>
+      <input class="otp-inp" type="text" maxlength="1" inputmode="numeric"/>
+    </div>
+    <button class="pwd-btn" onclick="go('s-pwd3')">Підтвердити</button>
+    <div class="resend-row">
+      <span class="resend-lbl">НЕ ОТРИМАЛИ КОД?</span>
+      <button class="resend-btn" onclick="toast('Код надіслано повторно 📩')">Надіслати ще раз</button>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="s-pwd3">
+  <div class="hdr hdr-green hdr-center">
+    <button class="hdr-back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></button>
+    <span class="hdr__title">БЕЗПЕКА</span>
+  </div>
+  <div class="scroll" style="padding:0 44px 40px;">
+    <div style="padding-top:52px;margin-bottom:24px;"><h2 style="color:#181d1b;font-size:26px;font-weight:700;margin-bottom:10px;">Створіть надійний пароль</h2><p style="color:#3e4944;font-size:14px;">Мінімум 6 символів</p></div>
+    <div class="fgrp" style="margin-bottom:18px;"><label style="color:#3e4944;font-size:14px;margin-bottom:8px;">Новий пароль</label><input class="inp" type="password" placeholder="••••••••"/></div>
+    <div class="fgrp" style="margin-bottom:8px;"><label style="color:#3e4944;font-size:14px;margin-bottom:8px;">Підтвердіть пароль</label><input class="inp" type="password" placeholder="••••••••"/></div>
+    <button class="pwd-btn" style="margin-top:28px;" onclick="go('s-login');toast('Пароль збережено ✓')">Зберегти та увійти</button>
+  </div>
+</section>
+
+<section class="screen" id="s-pwd4">
+  <div class="sup-header">
+    <button class="hdr-back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></button>
+    <span class="sup-header-title">Підтримка</span>
+  </div>
+  <div class="sup-content">
+    <h2 class="sup-main-title">Центр підтримки</h2>
+    <p style="color:#3e4944;font-size:14px;margin-bottom:28px;">Ми тут, щоб допомогти вам з вашими відправленнями.</p>
+    <div class="faq-card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px;"><span style="font-size:20px;">❓</span><span class="faq-card-title">Часті питання</span></div>
+      <div class="faq-item-row" onclick="toast('Відстеження посилки — введіть трек-номер')"><span class="faq-q">Як відстежити посилку?</span><span>›</span></div>
+      <div class="faq-item-row" onclick="toast('Час доставки: 1-3 дні')"><span class="faq-q">Час доставки?</span><span>›</span></div>
+      <div class="faq-item-row" onclick="toast('Список заборонених товарів')"><span class="faq-q">Що не можна відправляти?</span><span>›</span></div>
+    </div>
+    <div class="sup-card">
+      <div style="font-size:52px;margin-bottom:22px;">🎧</div>
+      <p class="sup-card-title">Потрібна допомога?</p>
+      <p class="sup-card-sub">Наші оператори готові відповісти на всі ваші запитання.</p>
+      <button class="sup-card-btn" onclick="go('s-pwd5')"><span>Зв'язатися з оператором</span><span>›</span></button>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="s-pwd5">
+  <div class="chat-header">
+    <div class="chat-topbar">
+      <button class="hdr-back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></button>
+      <span class="chat-topbar-title">ПІДТРИМКА</span>
+    </div>
+    <div class="chat-op-bar">
+      <div class="chat-op-profile">
+        <div class="chat-avatar"><div class="chat-status-dot"></div></div>
+        <div><div class="chat-op-name">Марія</div><div class="chat-op-status">Служба підтримки • Онлайн</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="chat-messages">
+    <div class="msg-row bot"><div class="msg-avatar">🤖</div><div class="msg-content"><div class="bubble bot-bubble">Доброго дня! Я віртуальний помічник MatePost. Чим можу допомогти?</div><span class="msg-time">10:42</span></div></div>
+    <div class="msg-row user"><div class="msg-content"><div class="bubble user-bubble">Мене цікавить статус моєї посилки.</div><span class="msg-time">10:44</span></div></div>
+    <div class="msg-row bot"><div class="msg-avatar">🤖</div><div class="msg-content"><div class="bubble bot-bubble">Ваша посилка зараз знаходиться в транзиті. Очікувана дата доставки: завтра.</div><div class="quick-replies"><button class="q-reply yes" onclick="toast('З\'єднуємо з оператором...')">Так</button><button class="q-reply no" onclick="toast('Дякуємо!')">Ні, дякую</button></div><span class="msg-time">10:45</span></div></div>
+    <div class="msg-row system"><div class="sys-bubble">Оператор Марія приєдналася до чату</div></div>
+  </div>
+  <div class="chat-input-area">
+    <div class="chat-input-row">
+      <div class="chat-input-ph">Напишіть повідомлення...</div>
+      <button class="chat-send-btn">➤</button>
+    </div>
+  </div>
+</section>
+
+<!-- GUEST HOME — реальний пошук -->
+<section class="screen" id="s-guest-home">
+  <div class="gh-header"><span class="gh-logo">MatePost</span><span style="font-size:24px;cursor:pointer;" onclick="go('s-guest-upsell')">👤</span></div>
+  <div class="gh-content">
+    <div class="gh-hero"><h1 class="gh-page-title">Відстеження</h1></div>
+    <div class="gh-input-wrap">
+      <input class="gh-input-real" id="guest-track-input" type="text" placeholder="Введіть номер посилки (MP...)"/>
+      <button class="gh-scan-btn" onclick="doGuestTrack()">🔍</button>
+    </div>
+    <div id="guest-track-result"></div>
+  </div>
+  <div class="gh-nav">
+    <button class="gh-tab active" onclick="go('s-guest-home')"><span class="gh-tab-ico">📦</span><span>Відстежити</span></button>
+    <button class="gh-tab" onclick="go('s-guest-map')"><span class="gh-tab-ico">🏪</span><span>Відділення</span></button>
+    <button class="gh-tab" onclick="go('s-guest-tariffs')"><span class="gh-tab-ico">💰</span><span>Тарифи</span></button>
+    <button class="gh-tab" onclick="go('s-guest-upsell')"><span class="gh-tab-ico">👤</span><span>Профіль</span></button>
+  </div>
+</section>
+
+<!-- GUEST MAP — реальна Leaflet карта -->
+<section class="screen" id="s-guest-map">
+  <div class="gh-header"><span class="gh-logo">MatePost</span><span style="font-size:24px;cursor:pointer;" onclick="go('s-guest-upsell')">👤</span></div>
+  <div class="branch-map-area">
+    <div id="guest-leaflet-map"></div>
+    <div class="map-search-bar" style="z-index:1000;">🔍 Відділення та міста</div>
+  </div>
+  <div class="branch-sheet">
+    <div class="branch-drag"></div>
+    <div class="branch-body">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+        <div><div class="branch-name">Відділення №42</div><div class="branch-region">📍 Київська область</div></div>
+        <div class="branch-badge">🚶 1.2 км</div>
+      </div>
+      <div class="branch-card"><span class="branch-card-ico">📍</span><div><div class="branch-card-lbl">АДРЕСА</div><div class="branch-card-val">вул. Хрещатик, 22, Київ</div></div></div>
+      <div class="branch-card" style="margin-top:8px;"><span class="branch-card-ico">🕐</span><div><div class="branch-card-lbl">ГРАФІК РОБОТИ</div><div class="branch-card-val">Відкрито • до 20:00</div></div></div>
+      <div class="branch-tags" style="margin-top:10px;"><span class="branch-tag">Примірка</span><span class="branch-tag">До 30 кг</span><span class="branch-tag">Генератор</span></div>
+    </div>
+  </div>
+  <div class="gh-nav">
+    <button class="gh-tab" onclick="go('s-guest-home')"><span class="gh-tab-ico">📦</span><span>Відстежити</span></button>
+    <button class="gh-tab active" onclick="go('s-guest-map')"><span class="gh-tab-ico">🏪</span><span>Відділення</span></button>
+    <button class="gh-tab" onclick="go('s-guest-tariffs')"><span class="gh-tab-ico">💰</span><span>Тарифи</span></button>
+    <button class="gh-tab" onclick="go('s-guest-upsell')"><span class="gh-tab-ico">👤</span><span>Профіль</span></button>
+  </div>
+</section>
+
+<!-- GUEST TARIFFS -->
+<section class="screen" id="s-guest-tariffs">
+  <div class="trf-header"><span class="trf-logo">MatePost</span><span style="font-size:24px;cursor:pointer;" onclick="go('s-guest-upsell')">👤</span></div>
+  <div class="trf-content">
+    <div class="trf-hero"><div class="trf-hero-title">Тарифи на доставку</div><p style="color:#3e4944;font-size:14px;">Розрахуйте вартість відправлення по Україні.</p></div>
+    <div class="trf-card"><span class="trf-label">Тип відправлення</span>
+      <div class="type-grid">
+        <div class="type-opt active" onclick="selectType(this)"><span style="font-size:24px;">📦</span>Посилка</div>
+        <div class="type-opt" onclick="selectType(this)"><span style="font-size:24px;">📄</span>Документи</div>
+        <div class="type-opt" onclick="selectType(this)"><span style="font-size:24px;">👕</span>Одяг</div>
+        <div class="type-opt" onclick="selectType(this)"><span style="font-size:24px;">🔷</span>Інше</div>
+      </div>
+    </div>
+    <div class="trf-card"><span class="trf-label">Вага (кг)</span><div class="trf-inp-wrap"><input id="trf-weight" type="number" value="2.5" min="0.1" max="999"/></div></div>
+    <div class="trf-card"><span class="trf-label">Відстань (приблизно, км)</span><div class="trf-inp-wrap"><input id="trf-dist" type="number" value="400" min="1"/></div></div>
+    <button class="trf-calc-btn" onclick="calcTariff()">🧮 Розрахувати</button>
+    <div class="trf-result" id="trf-result-box" style="display:none;">
+      <div class="trf-result-lbl">ОРІЄНТОВНА ВАРТІСТЬ</div>
+      <div class="trf-price"><span class="amt" id="trf-amt">142</span><span class="cur">₴</span></div>
+      <div class="trf-time" id="trf-time-txt">Термін доставки: 1-3 дні</div>
+      <div class="trf-breakdown">
+        <div class="trf-row"><span>Базовий тариф</span><span>50 ₴</span></div>
+        <div class="trf-row"><span id="trf-row-weight">Вага</span><span id="trf-row-weight-val">—</span></div>
+        <div class="trf-row"><span id="trf-row-dist">Відстань</span><span id="trf-row-dist-val">—</span></div>
+      </div>
+      <div class="trf-discount"><span style="font-size:18px;flex-shrink:0;">🏷️</span><div><div style="font-size:14px;color:#4c6b5f;font-weight:600;margin-bottom:3px;">Отримайте знижку</div><div style="font-size:12px;color:rgba(76,107,95,0.85);">Зареєструйтесь, щоб накопичувати бонусні бали.</div></div></div>
+    </div>
+  </div>
+  <div class="gh-nav" style="position:absolute;bottom:0;left:0;right:0;">
+    <button class="gh-tab" onclick="go('s-guest-home')"><span class="gh-tab-ico">📦</span><span>Відстежити</span></button>
+    <button class="gh-tab" onclick="go('s-guest-map')"><span class="gh-tab-ico">🏪</span><span>Відділення</span></button>
+    <button class="gh-tab active" onclick="go('s-guest-tariffs')"><span class="gh-tab-ico">💰</span><span>Тарифи</span></button>
+    <button class="gh-tab" onclick="go('s-guest-upsell')"><span class="gh-tab-ico">👤</span><span>Профіль</span></button>
+  </div>
+</section>
+
+<!-- GUEST UPSELL -->
+<section class="screen" id="s-guest-upsell">
+  <div class="up-header"><button class="up-skip" onclick="go('s-guest-home')">Пропустити</button></div>
+  <div class="scroll" style="padding-bottom:100px;">
+    <div class="up-title">Бажаєте зберігати адреси та отримувати бонуси?</div>
+    <div class="up-img-wrap"><img src="images/mate-dog.png" style="width:100%;border-radius:20px;display:block;"/>
+    </div>
+    <div class="up-features">
+      <div class="up-feat"><div class="up-feat-ico">📋</div><div><div class="up-feat-title">Історія відправлень</div><div class="up-feat-desc">Миттєвий доступ до всіх ваших минулих відправлень.</div></div></div>
+      <div class="up-feat"><div class="up-feat-ico">🎁</div><div><div class="up-feat-title">Програма лояльності</div><div class="up-feat-desc">Накопичуйте бали за кожне відправлення та змінюйте на знижки.</div></div></div>
+      <div class="up-feat"><div class="up-feat-ico">🔔</div><div><div class="up-feat-title">Push-сповіщення</div><div class="up-feat-desc">Отримуйте повідомлення про зміну статусу посилки.</div></div></div>
+    </div>
+  </div>
+  <div style="position:absolute;bottom:0;left:0;right:0;padding:0 44px 20px;background:#fff;">
+    <button class="up-cta" onclick="go('s-register')">Створити акаунт</button>
+  </div>
+</section>
+
+<!-- HOME -->
+<section class="screen" id="s-home">
+  <header class="hdr">
+    <span class="hdr__brand">MatePost</span>
+    <div class="hdr__avatar" onclick="go('s-profile')"></div>
+  </header>
+  <div class="scroll scroll--tabbed" style="padding:20px 20px 24px;">
+    <h1 class="title anim" id="home-greeting">Вітаємо 👋</h1>
+    <p class="lead anim-2">Відстежуйте посилки та керуйте ними в одному місці.</p>
+    <!-- Пошук у головній -->
+    <div class="search-wrap anim-2">
+      <input id="home-search-input" type="text" placeholder="🔍 Введіть трек-номер посилки..." onkeydown="if(event.key==='Enter')doHomeSearch()"/>
+      <button onclick="doHomeSearch()">➤</button>
+    </div>
+    <div class="grid-acts anim-3">
+      <button class="grid-act" onclick="go('s-parcels')"><span class="ico">📦</span>Мої посилки</button>
+      <button class="grid-act" onclick="go('s-map')"><span class="ico">🗺</span>Відділення поруч</button>
+      <button class="grid-act" onclick="go('s-create')"><span class="ico">✉️</span>Нове відправлення</button>
+      <button class="grid-act" onclick="go('s-pwd4')"><span class="ico">💬</span>Підтримка</button>
+    </div>
+    <div class="promo anim-3"><h3>Програма лояльності</h3><p>Збирайте бали за кожне відправлення та змінюйте їх на знижки.</p></div>
+    <p class="cap">Останні посилки</p>
+    <div id="home-parcels"><div class="loading"><div class="spinner"></div>Завантаження...</div></div>
+  </div>
+  <nav class="tabbar">
+    <button class="tab active" onclick="go('s-home')"><span class="ico">⌂</span>Головна</button>
+    <button class="tab" onclick="go('s-parcels')"><span class="ico">📦</span>Посилки</button>
+    <button class="tab tab--fab" onclick="go('s-create')">+</button>
+    <button class="tab" onclick="go('s-map')"><span class="ico">🗺</span>Мапа</button>
+    <button class="tab" onclick="go('s-profile')"><span class="ico">👤</span>Профіль</button>
+  </nav>
+</section>
+
+<!-- PARCELS -->
+<section class="screen" id="s-parcels">
+  <header class="hdr"><span class="hdr__brand">MatePost</span><div class="hdr__avatar" onclick="go('s-profile')"></div></header>
+  <div class="scroll scroll--tabbed" style="padding:20px 20px 24px;">
+    <h1 class="title anim">Мої посилки</h1>
+    <!-- Пошук за треком -->
+    <div class="search-wrap">
+      <input id="parcel-search-input" type="text" placeholder="🔍 Пошук за треком або описом..." oninput="filterParcels()"/>
+    </div>
+    <div class="chips">
+      <button class="chip active" onclick="filterChip(this,'all')">Усі</button>
+      <button class="chip" onclick="filterChip(this,'InTransit')">В дорозі</button>
+      <button class="chip" onclick="filterChip(this,'Created')">Нові</button>
+      <button class="chip" onclick="filterChip(this,'Delivered')">Доставлено</button>
+      <button class="chip" onclick="filterChip(this,'Cancelled')">Скасовано</button>
+    </div>
+    <div id="parcels-container"><div class="loading"><div class="spinner"></div>Завантаження...</div></div>
+  </div>
+  <nav class="tabbar">
+    <button class="tab" onclick="go('s-home')"><span class="ico">⌂</span>Головна</button>
+    <button class="tab active" onclick="go('s-parcels')"><span class="ico">📦</span>Посилки</button>
+    <button class="tab tab--fab" onclick="go('s-create')">+</button>
+    <button class="tab" onclick="go('s-map')"><span class="ico">🗺</span>Мапа</button>
+    <button class="tab" onclick="go('s-profile')"><span class="ico">👤</span>Профіль</button>
+  </nav>
+  <div class="modal-overlay" id="sheet-overlay" onclick="closeSheet(event)">
+    <div class="sheet">
+      <span class="sheet-handle"></span>
+      <p class="cap">Дії з посилкою</p>
+      <button class="sheet-row" onclick="toast('Ярлик PDF завантажено ✓');closeSheetDirect()">📄 Завантажити ярлик PDF</button>
+      <button class="sheet-row" onclick="toast('Нагадування встановлено 🔔');closeSheetDirect()">🔔 Нагадати про видачу</button>
+      <button class="sheet-row" onclick="toast('Доручення оформлено ✓');closeSheetDirect()">👤 Доручити отримання</button>
+      <button class="btn btn--ghost" style="margin-top:16px" onclick="closeSheetDirect()">Закрити</button>
+    </div>
+  </div>
+</section>
+
+<!-- MAP -->
+<section class="screen" id="s-map">
+  <header class="hdr">
+    <button class="hdr-back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>Назад</button>
+    <span class="hdr__brand">MatePost</span><div style="width:60px"></div>
+  </header>
+  <div class="map-area">
+    <div class="map-search-bar" style="z-index:1000;">🔍 Пошук відділення або адреси</div>
+    <div id="leaflet-map"></div>
+  </div>
+  <div class="map-sheet">
+    <p class="cap">Відділення MatePost</p>
+    <h2>Міста на карті</h2>
+    <p>Зелені маркери — відділення. Помаранчеві — ваші посилки в дорозі.</p>
+    <button class="btn" onclick="toast('Маршрут відкрито в картах 🗺')">Маршрут</button>
+    <button class="btn btn--ghost" style="margin-top:10px" onclick="go('s-queue')">Записатись у чергу</button>
+  </div>
+  <nav class="tabbar">
+    <button class="tab" onclick="go('s-home')"><span class="ico">⌂</span>Головна</button>
+    <button class="tab" onclick="go('s-parcels')"><span class="ico">📦</span>Посилки</button>
+    <button class="tab tab--fab" onclick="go('s-create')">+</button>
+    <button class="tab active"><span class="ico">🗺</span>Мапа</button>
+    <button class="tab" onclick="go('s-profile')"><span class="ico">👤</span>Профіль</button>
+  </nav>
+</section>
+
+<!-- PARCEL DETAIL -->
+<section class="screen" id="s-detail">
+  <header class="hdr">
+    <button class="hdr-back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>Назад</button>
+    <span class="hdr__brand">MatePost</span><div style="width:60px"></div>
+  </header>
+  <div class="scroll" style="padding:20px 20px 24px;">
+    <div id="detail-hero" class="anim"></div>
+    <p class="cap">Деталі</p>
+    <div id="detail-kv" class="kv anim-2"></div>
+    <p class="cap">Історія статусів</p>
+    <ul id="detail-timeline" class="timeline anim-2"></ul>
+    <div class="divider"></div>
+    <button class="btn anim-2" onclick="go('s-queue')">Записатись у чергу на відділенні</button>
+    <button class="btn btn--ghost anim-3" style="margin-top:10px" onclick="toast('Контакти: 0800 111 000 📞')">Контакти відділення</button>
+  </div>
+</section>
+
+<!-- PAY -->
+<section class="screen" id="s-pay">
+  <header class="hdr"><button class="hdr-back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>Назад</button><span class="hdr__brand">MatePost</span><div style="width:60px"></div></header>
+  <div class="scroll" style="padding:20px 20px 24px;">
+    <h1 class="title anim">Оплата послуги</h1>
+    <p class="lead anim-2">Оберіть спосіб оплати</p>
+    <button class="pay-card active" onclick="selectPay(this)"><span class="pay-ico">💳</span>Картка Visa / Mastercard</button>
+    <button class="pay-card" onclick="selectPay(this)"><span class="pay-ico">🍎</span>Apple Pay</button>
+    <button class="pay-card" onclick="selectPay(this)"><span class="pay-ico">G</span>Google Pay</button>
+    <div class="pay-sum anim-2" id="pay-amount">— <small>грн · з ПДВ</small></div>
+    <button class="btn" onclick="go('s-pay-ok')">Сплатити</button>
+  </div>
+</section>
+
+<section class="screen" id="s-pay-ok">
+  <header class="hdr"><span class="hdr__brand">MatePost</span><div class="hdr__avatar"></div></header>
+  <div class="scroll" style="padding:20px 20px 24px;">
+    <div class="ok-center"><div class="ok-ring anim-scale">✓</div><h2>Оплату прийнято</h2><p>Кошти успішно списано.</p></div>
+    <button class="btn anim-2" onclick="go('s-parcels')">До моїх посилок</button>
+    <button class="btn btn--ghost anim-3" style="margin-top:10px" onclick="toast('Квитанцію збережено PDF ✓')">Зберегти квитанцію PDF</button>
+  </div>
+</section>
+
+<!-- CREATE -->
+<section class="screen" id="s-create">
+  <header class="hdr"><button class="hdr-back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>Назад</button><span class="hdr__brand">MatePost</span><div style="width:60px"></div></header>
+  <div class="scroll" style="padding:20px 20px 24px;">
+    <h1 class="title anim">Нове відправлення</h1>
+    <p class="lead anim-2">Заповніть дані — розрахуємо вартість автоматично.</p>
+    <div class="form-block anim">
+      <h3>Відправник</h3>
+      <div class="field"><label>Місто відправлення</label><select id="s-city"><option value="">Завантаження...</option></select></div>
+      <div class="field"><label>ПІБ / Компанія</label><input id="s-name" type="text" placeholder="Іваненко Марія"/></div>
+      <div class="field"><label>Телефон</label><input id="s-phone" type="tel" placeholder="+380 XX XXX XX XX"/></div>
+    </div>
+    <div class="form-block anim-2">
+      <h3>Отримувач</h3>
+      <div class="field"><label>Місто отримання</label><select id="r-city"><option value="">Завантаження...</option></select></div>
+      <div class="field"><label>ПІБ / Компанія</label><input id="r-name" type="text" placeholder="Петренко Олег"/></div>
+      <div class="field"><label>Телефон</label><input id="r-phone" type="text" placeholder="+380 XX XXX XX XX"/></div>
+    </div>
+    <div class="form-block anim-3">
+      <h3>Параметри посилки</h3>
+      <div class="field"><label>Вага, кг</label><input id="c-weight" type="number" inputmode="decimal" value="1" min="0.1" max="999" step="0.1"/></div>
+      <div class="field"><label>Опис</label><input id="c-desc" type="text" placeholder="Одяг, взуття..."/></div>
+    </div>
+    <div class="price-box anim-3"><span>Орієнтовна вартість</span><strong id="price-preview">60</strong></div>
+    <button class="btn" onclick="doCreateParcel()">Оформити відправлення</button>
+  </div>
+</section>
+
+<!-- TICKET -->
+<section class="screen" id="s-ticket">
+  <header class="hdr"><button class="hdr-back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>Назад</button><span class="hdr__brand">MatePost</span><div style="width:60px"></div></header>
+  <div class="scroll" style="padding:20px 20px 24px;">
+    <p class="cap anim">Електронний білет</p>
+    <div class="ticket anim-scale">
+      <div class="track-big" id="ticket-number">—</div>
+      <div class="qr" role="img" aria-label="QR-код відправлення"></div>
+      <p style="font-size:13px;color:var(--body);line-height:1.5;margin-bottom:16px" id="ticket-route">Збережіть або покажіть код на екрані.</p>
+      <button class="btn" onclick="go('s-parcels')">До моїх посилок</button>
+      <button class="btn btn--ghost" style="margin-top:10px" onclick="copyTrackNumber()">🔗 Скопіювати трек-номер</button>
+    </div>
+  </div>
+</section>
+
+<!-- QUEUE -->
+<section class="screen" id="s-queue">
+  <header class="hdr"><button class="hdr-back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>Назад</button><span class="hdr__brand">MatePost</span><div style="width:60px"></div></header>
+  <div class="scroll" style="padding:20px 20px 24px;">
+    <h1 class="title anim">Черга на відділенні</h1>
+    <div class="loc-box anim-2"><strong>Відділення №452</strong><span>м. Київ, вул. Хрещатик, 22</span></div>
+    <p class="cap">Травень 2026</p>
+    <div class="calendar" id="cal"></div>
+    <p class="cap">Доступні вікна</p>
+    <div class="slots" id="slots">
+      <button class="slot" onclick="selectSlot(this)">11:00</button>
+      <button class="slot selected" onclick="selectSlot(this)">11:30</button>
+      <button class="slot" onclick="selectSlot(this)">12:00</button>
+      <button class="slot" onclick="selectSlot(this)">12:30</button>
+      <button class="slot" onclick="selectSlot(this)">13:00</button>
+      <button class="slot" onclick="selectSlot(this)">13:30</button>
+    </div>
+    <button class="btn" style="margin-top:24px" onclick="go('s-queue-ok')">Підтвердити запис</button>
+  </div>
+</section>
+
+<section class="screen" id="s-queue-ok">
+  <header class="hdr"><span class="hdr__brand">MatePost</span><div class="hdr__avatar"></div></header>
+  <div class="scroll" style="padding:20px 20px 24px;">
+    <div class="ok-center" style="padding-top:8px"><div class="ok-ring anim-scale">🕐</div><h2>Ви в черзі!</h2><p>Запис підтверджено. Нагадаємо за 30 хвилин до візиту.</p></div>
+    <div class="q-steps anim-2">
+      <h3>Деталі запису</h3>
+      <div class="q-step"><div class="q-num">1</div><div>Відділення №452 · Київ, вул. Хрещатик, 22</div></div>
+      <div class="q-step"><div class="q-num">2</div><div>Дата та час: 20 травня 2026, 11:30</div></div>
+      <div class="q-step"><div class="q-num">3</div><div>Покажіть QR-код на стійці видачі</div></div>
+    </div>
+    <p class="cap">Квиток запису</p>
+    <div class="q-ticket anim-2"><strong>Q-4821</strong><div class="q-qr"></div><p>Збережіть екран до візиту.</p></div>
+    <button class="btn" style="margin-top:16px" onclick="toast('Додано до календаря 📅')">Додати в календар</button>
+    <button class="btn btn--ghost" style="margin-top:10px" onclick="go('s-parcels')">Скасувати запис</button>
+  </div>
+</section>
+
+<!-- PROFILE -->
+<section class="screen" id="s-profile">
+  <header class="hdr"><span class="hdr__brand">MatePost</span><div class="hdr__avatar"></div></header>
+  <div class="scroll scroll--tabbed" style="padding:20px 20px 24px;">
+    <div class="prof-top anim"><div class="prof-av"></div><h2 id="prof-name">Завантаження...</h2><p id="prof-info">...</p></div>
+    <div class="loyalty anim-2"><strong>Програма лояльності</strong><div class="pts" id="prof-pts">0 балів</div><span style="font-size:13px;opacity:0.85;">1 бал за кожну гривню відправлення</span></div>
+    <p class="cap">Сповіщення</p>
+    <div class="anim-3">
+      <div class="row-toggle"><span>Статуси відправлень</span><div class="toggle on" onclick="toggleSwitch(this)"></div></div>
+      <div class="row-toggle"><span>Акції та новини</span><div class="toggle on" onclick="toggleSwitch(this)"></div></div>
+      <div class="row-toggle"><span>Нагадування про видачу</span><div class="toggle" onclick="toggleSwitch(this)"></div></div>
+    </div>
+    <p class="cap" style="margin-top:20px">Акаунт</p>
+    <button class="btn btn--ghost btn--sm anim" style="margin-bottom:10px" onclick="toast('Редагування профілю ✏️')">Редагувати профіль</button>
+    <button class="btn btn--ghost btn--sm anim-2" style="margin-bottom:10px" onclick="toast('Адреси та реквізити 📋')">Адреси та реквізити</button>
+    <button class="btn btn--ghost btn--sm anim-3" style="color:var(--red);border-color:rgba(196,43,43,0.3)" onclick="doLogout()">Вихід</button>
+  </div>
+  <nav class="tabbar">
+    <button class="tab" onclick="go('s-home')"><span class="ico">⌂</span>Головна</button>
+    <button class="tab" onclick="go('s-parcels')"><span class="ico">📦</span>Посилки</button>
+    <button class="tab tab--fab" onclick="go('s-create')">+</button>
+    <button class="tab" onclick="go('s-map')"><span class="ico">🗺</span>Мапа</button>
+    <button class="tab active"><span class="ico">👤</span>Профіль</button>
+  </nav>
+</section>
+
+<div id="toast"></div>
+</div></div>
+
+<script>
+// ═══════════════════════════════════════
+// КОНФІГ
+// ═══════════════════════════════════════
+const API_URL = 'http://localhost:60884/api';
+
+const STATUS_UA = {
+  'Created':'Створено','Processing':'Обробляється','InTransit':'В дорозі',
+  'ArrivedAtCity':'Прибула до міста','OutForDelivery':'Видається кур\'єром',
+  'Delivered':'Доставлено','Returned':'Повернуто','Cancelled':'Скасовано'
+};
+const STATUS_EMO = {
+  'Created':'📝','Processing':'⚙️','InTransit':'🚚','ArrivedAtCity':'📍',
+  'OutForDelivery':'🏍','Delivered':'✅','Returned':'↩️','Cancelled':'❌'
+};
+
+function statusUa(s){return STATUS_UA[s]||s;}
+function statusEmo(s){return STATUS_EMO[s]||'📦';}
+
+function getToken(){return localStorage.getItem('mp_token');}
+function setToken(t){localStorage.setItem('mp_token',t);}
+function getUser(){return JSON.parse(localStorage.getItem('mp_user')||'null');}
+
+// ═══════════════════════════════════════
+// API
+// ═══════════════════════════════════════
+async function apiCall(endpoint, method='GET', body=null){
+  const headers={'Content-Type':'application/json'};
+  const token=getToken();
+  if(token) headers['Authorization']='Bearer '+token;
+  const config={method,headers};
+  if(body) config.body=JSON.stringify(body);
+  const res=await fetch(API_URL+endpoint,config);
+  if(!res.ok){
+    const txt=await res.text();
+    let msg=res.statusText;
+    try{const j=JSON.parse(txt);msg=j.message||msg;}catch(e){msg=txt||msg;}
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+// ═══════════════════════════════════════
+// ROUTER
+// ═══════════════════════════════════════
+var historyStack=['s-splash'];
+var current='s-splash';
+
+function go(id){
+  if(id===current) return;
+  var prev=document.getElementById(current);
+  var next=document.getElementById(id);
+  if(!next) return;
+  prev.classList.remove('active');
+  prev.classList.add('slide-back');
+  next.classList.remove('slide-back');
+  next.classList.add('active');
+  next.querySelectorAll('.anim,.anim-2,.anim-3,.anim-scale').forEach(function(el){
+    el.style.animation='none';el.offsetHeight;el.style.animation='';
+  });
+  setTimeout(function(){prev.classList.remove('slide-back');},300);
+  historyStack.push(id);
+  current=id;
+  // Дії при переході
+  if(id==='s-home'||id==='s-profile') loadUserData();
+  if(id==='s-parcels'||id==='s-home') loadMyParcels();
+  if(id==='s-create'&&globalCities.length===0) loadCities();
+  if(id==='s-map') setTimeout(initMap,350);
+  if(id==='s-guest-map') setTimeout(initGuestMap,350);
+}
+
+function back(){
+  if(historyStack.length<2) return;
+  historyStack.pop();
+  var prevId=historyStack[historyStack.length-1];
+  var curr=document.getElementById(current);
+  var prev=document.getElementById(prevId);
+  if(!prev) return;
+  curr.classList.remove('active');
+  curr.style.transform='translateX(40px)';
+  setTimeout(function(){curr.style.transform='';},300);
+  prev.classList.remove('slide-back');
+  prev.style.transform='translateX(-20px)';
+  prev.offsetHeight;
+  prev.classList.add('active');
+  prev.style.transform='';
+  current=prevId;
+}
+
+// ═══════════════════════════════════════
+// АВТОРИЗАЦІЯ
+// ═══════════════════════════════════════
+async function doLogin(){
+  var email=document.getElementById('login-email').value.trim();
+  var pass=document.getElementById('login-pass').value;
+  if(!email||!pass){toast('Введіть email та пароль ⚠️');return;}
+  try{
+    var data=await apiCall('/auth/login','POST',{email,password:pass});
+    setToken(data.token);
+    localStorage.setItem('mp_user',JSON.stringify(data));
+    toast('Успішний вхід ✓');
+    go('s-home');
+  }catch(err){
+    console.error(err);
+    toast('❌ '+(err.message||'Невірний email або пароль'));
+  }
+}
+
+async function doRegister(){
+  var payload={
+    name:document.getElementById('reg-name').value.trim(),
+    email:document.getElementById('reg-email').value.trim(),
+    phone:document.getElementById('reg-phone').value.trim(),
+    password:document.getElementById('reg-pass').value
+  };
+  if(!payload.name||!payload.email||!payload.phone||!payload.password){
+    toast('Заповніть всі поля ⚠️');return;
+  }
+  if(payload.password.length<6){toast('Пароль мінімум 6 символів ⚠️');return;}
+  try{
+    var data=await apiCall('/auth/register','POST',payload);
+    setToken(data.token);
+    localStorage.setItem('mp_user',JSON.stringify(data));
+    toast('Акаунт створено ✓');
+    go('s-home');
+  }catch(err){
+    console.error(err);
+    toast('❌ '+(err.message||'Помилка реєстрації'));
+  }
+}
+
+function doLogout(){
+  localStorage.removeItem('mp_token');
+  localStorage.removeItem('mp_user');
+  allParcels=[];
+  toast('Ви вийшли з акаунту 👋');
+  go('s-splash');
+}
+
+function loadUserData(){
+  var u=getUser();
+  if(!u) return;
+  var firstName=u.name?u.name.split(' ')[0]:'Користувач';
+  var el;
+  el=document.getElementById('home-greeting');if(el) el.textContent='Вітаємо, '+firstName+' 👋';
+  el=document.getElementById('prof-name');if(el) el.textContent=u.name;
+  el=document.getElementById('prof-info');if(el) el.textContent=(u.email||'')+' · '+(u.phone||'');
+  el=document.getElementById('prof-pts');if(el) el.textContent=(u.loyaltyPoints||0)+' балів';
+}
+
+// ═══════════════════════════════════════
+// ПОСИЛКИ
+// ═══════════════════════════════════════
+var globalCities=[];
+var allParcels=[];
+var currentFilter='all';
+
+async function loadCities(){
+  try{
+    globalCities=await apiCall('/parcels/cities');
+    var opts='<option value="">Оберіть місто...</option>';
+    globalCities.forEach(function(c){opts+='<option value="'+c.id+'">'+c.name+'</option>';});
+    var sc=document.getElementById('s-city');
+    var rc=document.getElementById('r-city');
+    if(sc) sc.innerHTML=opts;
+    if(rc) rc.innerHTML=opts;
+    updatePrice();
+  }catch(err){console.error('Не вдалося завантажити міста',err);}
+}
+
+function updatePrice(){
+  var sId=parseInt(document.getElementById('s-city')?.value||'0');
+  var rId=parseInt(document.getElementById('r-city')?.value||'0');
+  var w=parseFloat(document.getElementById('c-weight')?.value||'1')||1;
+  var prev=document.getElementById('price-preview');
+  if(!prev) return;
+  if(sId&&rId&&globalCities.length){
+    var sc=globalCities.find(function(c){return c.id===sId;});
+    var rc=globalCities.find(function(c){return c.id===rId;});
+    if(sc&&rc){
+      var dist=haversineKm(sc.latitude,sc.longitude,rc.latitude,rc.longitude);
+      prev.textContent=Math.round(50+w*10+dist*0.05);
+      return;
+    }
+  }
+  prev.textContent=Math.round(50+w*10);
+}
+
+function haversineKm(lat1,lon1,lat2,lon2){
+  var R=6371,toRad=function(d){return d*Math.PI/180;};
+  var dLat=toRad(lat2-lat1),dLon=toRad(lon2-lon1);
+  var a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)*Math.sin(dLon/2);
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+document.addEventListener('change',function(e){
+  if(e.target.id==='s-city'||e.target.id==='r-city'||e.target.id==='c-weight') updatePrice();
+});
+document.addEventListener('input',function(e){
+  if(e.target.id==='c-weight') updatePrice();
+});
+
+async function doCreateParcel(){
+  var payload={
+    senderCityId:parseInt(document.getElementById('s-city').value),
+    senderName:document.getElementById('s-name').value.trim(),
+    senderPhone:document.getElementById('s-phone').value.trim(),
+    receiverCityId:parseInt(document.getElementById('r-city').value),
+    receiverName:document.getElementById('r-name').value.trim(),
+    receiverPhone:document.getElementById('r-phone').value.trim(),
+    weightKg:parseFloat(document.getElementById('c-weight').value)||1,
+    description:document.getElementById('c-desc').value.trim()||'Посилка'
+  };
+  if(!payload.senderCityId||!payload.receiverCityId||!payload.senderName||!payload.receiverName||!payload.senderPhone||!payload.receiverPhone){
+    toast('Будь ласка, заповніть всі поля ⚠️');return;
+  }
+  try{
+    var data=await apiCall('/parcels','POST',payload);
+    toast('Відправлення оформлено! 📦');
+    document.getElementById('ticket-number').textContent=data.trackingNumber;
+    document.getElementById('ticket-route').textContent=(data.senderCity?.name||'?')+' → '+(data.receiverCity?.name||'?');
+    var user=getUser();
+    if(user){user.loyaltyPoints=(user.loyaltyPoints||0)+Math.floor(data.price);localStorage.setItem('mp_user',JSON.stringify(user));}
+    allParcels=[];// Скидаємо кеш
+    go('s-ticket');
+  }catch(err){
+    console.error(err);
+    toast('❌ '+(err.message||'Перевірте правильність даних'));
+  }
+}
+
+function copyTrackNumber(){
+  var tn=document.getElementById('ticket-number').textContent;
+  if(navigator.clipboard&&tn!=='—'){
+    navigator.clipboard.writeText(tn).then(function(){toast('Трек-номер скопійовано ✓');});
+  }else{toast('Трек: '+tn);}
+}
+
+async function loadMyParcels(){
+  if(!getToken()) return;
+  try{
+    allParcels=await apiCall('/parcels/my');
+    renderParcels();
+  }catch(err){
+    console.error('Помилка завантаження посилок',err);
+    var c1=document.getElementById('parcels-container');
+    if(c1) c1.innerHTML='<p style="text-align:center;color:var(--muted);padding:20px 0;">Не вдалося завантажити посилки.</p>';
+  }
+}
+
+function renderParcels(){
+  var searchVal=(document.getElementById('parcel-search-input')?.value||'').toLowerCase().trim();
+  var filtered=allParcels.filter(function(p){
+    var matchFilter=currentFilter==='all'||p.status===currentFilter;
+    var matchSearch=!searchVal||
+      p.trackingNumber.toLowerCase().includes(searchVal)||
+      (p.description||'').toLowerCase().includes(searchVal)||
+      (p.senderCity?.name||'').toLowerCase().includes(searchVal)||
+      (p.receiverCity?.name||'').toLowerCase().includes(searchVal);
+    return matchFilter&&matchSearch;
+  });
+
+  var html='';
+  if(filtered.length===0){
+    html='<div class="empty-cta"><div class="ico">📮</div><h3>Нічого не знайдено</h3><p>Спробуйте змінити фільтр або пошуковий запит.</p><button class="btn" onclick="go(\'s-create\')">Створити відправлення</button></div>';
+  }else{
+    filtered.forEach(function(p){
+      var statusLabel=statusUa(p.status);
+      var badgeClass='parcel__badge';
+      if(p.status==='Cancelled'||p.status==='Returned') badgeClass+=' parcel__badge--red';
+      else if(p.status==='Delivered') badgeClass+=' parcel__badge--green';
+      else if(p.status==='ArrivedAtCity'||p.status==='OutForDelivery') badgeClass+=' parcel__badge--wait';
+      var price=p.price?(' · '+p.price+'₴'):'';
+      html+='<div class="parcel anim" onclick="openParcelDetail('+p.id+')">'
+        +'<span class="'+badgeClass+'">'+statusEmo(p.status)+' '+statusLabel+'</span>'
+        +'<div class="parcel__name">'+(p.description||'Посилка')+' ('+p.weightKg+' кг'+price+')</div>'
+        +'<div class="parcel__num">'+p.trackingNumber+'</div>'
+        +'<div class="parcel__route"><span>'+(p.senderCity?.name||'?')+'</span>'
+        +'<div class="parcel__route-arrow"></div>'
+        +'<span>'+(p.receiverCity?.name||'?')+'</span></div>'
+        +'</div>';
+    });
+  }
+
+  var c1=document.getElementById('parcels-container');
+  if(c1) c1.innerHTML=html;
+
+  // Головна — тільки перші 3
+  var c2=document.getElementById('home-parcels');
+  if(c2){
+    if(allParcels.length===0){
+      c2.innerHTML='<p style="text-align:center;color:var(--muted);padding:10px 0;">Немає відправлень</p>';
+    }else{
+      var homeHtml='';
+      allParcels.slice(0,3).forEach(function(p){
+        var statusLabel=statusUa(p.status);
+        var badgeClass='parcel__badge';
+        if(p.status==='Cancelled'||p.status==='Returned') badgeClass+=' parcel__badge--red';
+        else if(p.status==='Delivered') badgeClass+=' parcel__badge--green';
+        homeHtml+='<div class="parcel anim" onclick="openParcelDetail('+p.id+')">'
+          +'<span class="'+badgeClass+'">'+statusEmo(p.status)+' '+statusLabel+'</span>'
+          +'<div class="parcel__name">'+(p.description||'Посилка')+' ('+p.weightKg+' кг)</div>'
+          +'<div class="parcel__num">'+p.trackingNumber+'</div>'
+          +'<div class="parcel__route"><span>'+(p.senderCity?.name||'?')+'</span>'
+          +'<div class="parcel__route-arrow"></div>'
+          +'<span>'+(p.receiverCity?.name||'?')+'</span></div>'
+          +'</div>';
+      });
+      c2.innerHTML=homeHtml;
+    }
+  }
+}
+
+function filterChip(el,status){
+  el.closest('.chips').querySelectorAll('.chip').forEach(function(c){c.classList.remove('active');});
+  el.classList.add('active');
+  currentFilter=status;
+  renderParcels();
+}
+
+function filterParcels(){renderParcels();}
+
+// ─── Деталі посилки ───
+async function openParcelDetail(id){
+  try{
+    var p=allParcels.find(function(x){return x.id===id;})||await apiCall('/parcels/'+id);
+    renderDetailScreen(p);
+    go('s-detail');
+  }catch(err){toast('❌ Не вдалося завантажити деталі');}
+}
+
+function renderDetailScreen(p){
+  // Hero
+  var heroClass=(p.status==='Cancelled'||p.status==='Returned')?'hero hero--red':'hero';
+  document.getElementById('detail-hero').innerHTML=
+    '<div class="'+heroClass+'">'
+    +'<p class="hero__track">'+p.trackingNumber+'</p>'
+    +'<h2 class="hero__title">'+(p.description||'Посилка')+' · '+(p.senderCity?.name||'?')+' → '+(p.receiverCity?.name||'?')+'</h2>'
+    +'<span class="hero__badge">'+statusEmo(p.status)+' '+statusUa(p.status)+'</span>'
+    +'</div>';
+
+  // KV
+  var fmt=function(d){if(!d) return '—';var dt=new Date(d);return dt.toLocaleDateString('uk-UA',{day:'numeric',month:'long'});};
+  document.getElementById('detail-kv').innerHTML=
+    '<div class="kv-row"><span>Відправник</span><span>'+p.senderName+' · '+p.senderPhone+'</span></div>'
+    +'<div class="kv-row"><span>Отримувач</span><span>'+p.receiverName+' · '+p.receiverPhone+'</span></div>'
+    +'<div class="kv-row"><span>Маршрут</span><span>'+(p.senderCity?.name||'?')+' → '+(p.receiverCity?.name||'?')+'</span></div>'
+    +'<div class="kv-row"><span>Вага</span><span>'+p.weightKg+' кг</span></div>'
+    +'<div class="kv-row"><span>Вартість</span><span>'+p.price+' ₴</span></div>'
+    +'<div class="kv-row"><span>Оплата</span><span>'+(p.isPaid?'✅ Оплачено':'⏳ Очікує оплати')+'</span></div>'
+    +'<div class="kv-row"><span>Оформлено</span><span>'+fmt(p.createdAt)+'</span></div>'
+    +'<div class="kv-row"><span>Очікувана доставка</span><span>'+fmt(p.estimatedDelivery)+'</span></div>'
+    +(p.currentCity?'<div class="kv-row"><span>Зараз у</span><span>📍 '+p.currentCity.name+'</span></div>':'');
+
+  // Timeline
+  var tlHtml='';
+  if(p.events&&p.events.length){
+    p.events.forEach(function(e){
+      var dt=new Date(e.timestamp);
+      var timeStr=dt.toLocaleDateString('uk-UA',{day:'numeric',month:'short'})+', '+dt.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
+      tlHtml+='<li class="tl-item">'
+        +'<div class="tl-dot"><svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="3"/></svg></div>'
+        +'<div class="tl-text"><strong>'+statusEmo(e.status)+' '+statusUa(e.status)+(e.city?' · '+e.city.name:'')+'</strong>'
+        +'<div style="font-size:13px;color:var(--body);margin:2px 0;">'+e.description+'</div>'
+        +'<time>'+timeStr+'</time></div>'
+        +'</li>';
+    });
+  }else{
+    tlHtml='<li class="tl-item"><div class="tl-dot tl-dot--dim"><svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="3"/></svg></div><div class="tl-text"><strong>Немає подій</strong><time>—</time></div></li>';
+  }
+  document.getElementById('detail-timeline').innerHTML=tlHtml;
+}
+
+// ─── Пошук у головній ───
+async function doHomeSearch(){
+  var val=document.getElementById('home-search-input')?.value.trim();
+  if(!val){toast('Введіть трек-номер ⚠️');return;}
+  try{
+    var p=await apiCall('/parcels/track/'+val);
+    renderDetailScreen(p);
+    go('s-detail');
+  }catch(err){
+    toast('❌ Посилку не знайдено');
+  }
+}
+
+// ─── Гостьове відстеження ───
+async function doGuestTrack(){
+  var val=document.getElementById('guest-track-input')?.value.trim();
+  var resultBox=document.getElementById('guest-track-result');
+  if(!val){toast('Введіть трек-номер ⚠️');return;}
+  resultBox.innerHTML='<div class="loading" style="margin:0 24px;"><div class="spinner"></div>Шукаємо...</div>';
+  try{
+    var p=await apiCall('/parcels/track/'+val);
+    var fmt=function(d){if(!d) return '—';var dt=new Date(d);return dt.toLocaleDateString('uk-UA',{day:'numeric',month:'long'});};
+    var statusColor=p.status==='Delivered'?'var(--primary)':(p.status==='Cancelled'||p.status==='Returned')?'var(--red)':'var(--ink)';
+    resultBox.innerHTML=
+      '<div class="track-result-box">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">'
+      +'<div><span style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:0.5px;display:block;margin-bottom:6px;">СТАТУС</span>'
+      +'<div style="display:flex;align-items:center;gap:8px;"><div style="width:10px;height:10px;border-radius:50%;background:'+statusColor+';"></div>'
+      +'<span style="font-size:18px;font-weight:700;color:'+statusColor+';">'+statusEmo(p.status)+' '+statusUa(p.status)+'</span></div></div>'
+      +'<span style="font-size:28px;">🚚</span>'
+      +'</div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-bottom:4px;">'+p.trackingNumber+'</div>'
+      +'<div style="font-size:14px;color:var(--body);margin-bottom:4px;">'+(p.senderCity?.name||'?')+' → '+(p.receiverCity?.name||'?')+'</div>'
+      +(p.currentCity?'<div style="font-size:13px;color:var(--body);margin-bottom:8px;">📍 Зараз: '+p.currentCity.name+'</div>':'')
+      +'<div style="font-size:13px;color:var(--body);margin-bottom:14px;">Очікувана доставка: <strong>'+fmt(p.estimatedDelivery)+'</strong></div>'
+      +'<button class="gh-details-btn" onclick="showGuestDetail()">Детальна інформація</button>'
+      +'</div>';
+    // Зберігаємо для деталей
+    window._guestParcel=p;
+  }catch(err){
+    resultBox.innerHTML=
+      '<div class="track-result-box not-found" style="text-align:center;padding:24px;">'
+      +'<div style="font-size:40px;margin-bottom:10px;">🔍</div>'
+      +'<div style="font-weight:700;color:var(--ink);margin-bottom:6px;">Посилку не знайдено</div>'
+      +'<div style="font-size:13px;color:var(--muted);">Перевірте правильність трек-номера</div>'
+      +'</div>';
+  }
+}
+
+function showGuestDetail(){
+  if(!window._guestParcel) return;
+  renderDetailScreen(window._guestParcel);
+  go('s-detail');
+}
+
+// Пошук Enter
+document.addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&document.activeElement.id==='guest-track-input') doGuestTrack();
+});
+
+// ═══════════════════════════════════════
+// КАРТИ
+// ═══════════════════════════════════════
+var mapInstance=null;
+var guestMapInstance=null;
+
+function createMapMarkers(map, cities, parcels){
+  cities.forEach(function(c){
+    L.circleMarker([c.latitude,c.longitude],{
+      color:'#006b54',fillColor:'#00c97a',fillOpacity:0.8,radius:8,weight:2
+    }).addTo(map)
+      .bindPopup('<b>📍 '+c.name+'</b><br><small>'+c.region+' область</small>');
+  });
+  if(parcels){
+    parcels.forEach(function(p){
+      if(p.currentCity){
+        L.marker([p.currentCity.latitude,p.currentCity.longitude],{
+          icon:L.divIcon({
+            className:'',
+            html:'<div style="background:#e06c00;color:#fff;border-radius:8px;padding:3px 7px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3);">📦 '+p.trackingNumber.slice(-6)+'</div>',
+            iconAnchor:[30,10]
+          })
+        }).addTo(map)
+          .bindPopup('<b>📦 '+p.trackingNumber+'</b><br>'+statusUa(p.status)+'<br>📍 '+p.currentCity.name);
+      }
+    });
+  }
+}
+
+async function initMap(){
+  var container=document.getElementById('leaflet-map');
+  if(!container) return;
+  if(mapInstance){mapInstance.invalidateSize();return;}
+  var rect=container.getBoundingClientRect();
+  if(rect.width===0||rect.height===0){setTimeout(initMap,200);return;}
+  try{
+    mapInstance=L.map('leaflet-map',{zoomControl:true}).setView([48.3794,31.1656],6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:18}).addTo(mapInstance);
+    if(globalCities.length===0){try{globalCities=await apiCall('/parcels/cities');}catch(e){}}
+    var parcels=[];
+    if(getToken()){try{parcels=await apiCall('/parcels/map');}catch(e){}}
+    createMapMarkers(mapInstance,globalCities,parcels);
+  }catch(err){
+    console.error('Помилка ініціалізації карти',err);
+    if(mapInstance){mapInstance.remove();mapInstance=null;}
+  }
+}
+
+async function initGuestMap(){
+  var container=document.getElementById('guest-leaflet-map');
+  if(!container) return;
+  if(guestMapInstance){guestMapInstance.invalidateSize();return;}
+  var rect=container.getBoundingClientRect();
+  if(rect.width===0||rect.height===0){setTimeout(initGuestMap,200);return;}
+  try{
+    guestMapInstance=L.map('guest-leaflet-map',{zoomControl:true}).setView([48.3794,31.1656],6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:18}).addTo(guestMapInstance);
+    // Завантажуємо міста (публічний ендпоінт, без токена)
+    var cities=globalCities;
+    if(cities.length===0){try{cities=await apiCall('/parcels/cities');globalCities=cities;}catch(e){}}
+    createMapMarkers(guestMapInstance,cities,null);
+  }catch(err){
+    console.error('Помилка гостьової карти',err);
+    if(guestMapInstance){guestMapInstance.remove();guestMapInstance=null;}
+  }
+}
+
+// ═══════════════════════════════════════
+// ТАРИФИ
+// ═══════════════════════════════════════
+function calcTariff(){
+  var w=parseFloat(document.getElementById('trf-weight')?.value)||2.5;
+  var dist=parseFloat(document.getElementById('trf-dist')?.value)||400;
+  var price=Math.round(50+w*10+dist*0.05);
+  var days=dist<200?1:dist<500?2:3;
+  document.getElementById('trf-amt').textContent=price;
+  document.getElementById('trf-time-txt').textContent='Термін доставки: '+days+(days===1?' день':' дні');
+  document.getElementById('trf-row-weight').textContent='Вага ('+w+' кг)';
+  document.getElementById('trf-row-weight-val').textContent=Math.round(w*10)+' ₴';
+  document.getElementById('trf-row-dist').textContent='Відстань (~'+dist+' км)';
+  document.getElementById('trf-row-dist-val').textContent=Math.round(dist*0.05)+' ₴';
+  document.getElementById('trf-result-box').style.display='block';
+}
+
+// ═══════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════
+function selectPay(el){document.querySelectorAll('.pay-card').forEach(function(c){c.classList.remove('active');});el.classList.add('active');}
+function selectType(el){el.closest('.type-grid').querySelectorAll('.type-opt').forEach(function(o){o.classList.remove('active');});el.classList.add('active');}
+function toggleSwitch(el){el.classList.toggle('on');}
+function selectSlot(el){document.querySelectorAll('.slot').forEach(function(s){s.classList.remove('selected');});el.classList.add('selected');}
+function openSheet(){document.getElementById('sheet-overlay').classList.add('open');}
+function closeSheet(e){if(e.target===document.getElementById('sheet-overlay')) closeSheetDirect();}
+function closeSheetDirect(){document.getElementById('sheet-overlay').classList.remove('open');}
+
+// ─── Календар ───
+(function buildCalendar(){
+  var cal=document.getElementById('cal');
+  if(!cal) return;
+  ['Пн','Вт','Ср','Чт','Пт','Сб','Нд'].forEach(function(d){
+    var h=document.createElement('div');h.className='cal-head';h.textContent=d;cal.appendChild(h);
+  });
+  for(var i=0;i<4;i++){var e=document.createElement('div');cal.appendChild(e);}
+  for(var d=1;d<=31;d++){
+    var btn=document.createElement('button');
+    btn.className='cal-day';btn.textContent=d;
+    if(d<20) btn.disabled=true;
+    if(d===20) btn.classList.add('selected');
+    btn.addEventListener('click',function(){
+      cal.querySelectorAll('.cal-day').forEach(function(b){b.classList.remove('selected');});
+      this.classList.add('selected');
+    });
+    cal.appendChild(btn);
+  }
+})();
+
+// ─── OTP ───
+document.querySelectorAll('.otp-inp').forEach(function(inp,idx,all){
+  inp.addEventListener('input',function(){if(this.value&&idx<all.length-1) all[idx+1].focus();});
+  inp.addEventListener('keydown',function(e){if(e.key==='Backspace'&&!this.value&&idx>0) all[idx-1].focus();});
+});
+
+// ─── Toast ───
+var toastTimer;
+function toast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){t.classList.remove('show');},2800);
+}
+
+// ═══════════════════════════════════════
+// СТАРТ
+// ═══════════════════════════════════════
+if(getToken()){go('s-home');}
+</script>
+</body>
+</html>
